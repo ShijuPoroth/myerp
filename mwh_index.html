@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MWH Management - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .login-card { background: white; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); }
+    </style>
+</head>
+<body class="flex items-center justify-center">
+    <div class="login-card p-8 w-full max-w-md">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">MWH Management</h1>
+            <p class="text-gray-600">Sign in to continue</p>
+        </div>
+        <form id="login-form" class="space-y-6">
+            <div>
+                <label for="manager-id" class="block text-sm font-medium text-gray-700 mb-1">Manager</label>
+                <select id="manager-id" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Select manager</option>
+                </select>
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" id="password" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter password">
+            </div>
+            <div id="login-error" class="hidden text-red-600 text-sm"></div>
+            <button type="submit" class="w-full bg-indigo-600 text-white rounded-lg px-4 py-2 font-semibold hover:bg-indigo-700 transition">
+                <i class="fas fa-sign-in-alt mr-2"></i>Sign In
+            </button>
+        </form>
+    </div>
+    <script src="js/config.js?v=11"></script>
+    <script src="js/login.js?v=1"></script>
+</body>
+</html>
+

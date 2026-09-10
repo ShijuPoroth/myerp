@@ -1,0 +1,23 @@
+COMPANY LOGO - IMAGE PROPERTIES
+================================
+
+File Name   : company-logo.png  (must be exactly this name)
+Format      : PNG (preferred) or JPG
+Size        : 300 x 100 pixels  (width x height)
+Aspect Ratio: 3:1  (wide landscape format works best on payslip)
+Max File Size: 200 KB
+Background  : Transparent (PNG) or White (JPG)
+
+HOW TO USE
+----------
+1. Save your company logo image as:  company-logo.png
+2. Place it in this folder:  public/company-logo/
+3. It will automatically appear on all payslips — no code changes needed.
+4. If you want to update the logo, simply replace company-logo.png with your new image (keep the same file name).
+
+NOTES
+-----
+- If no logo file is found, the payslip header will show text only.
+- Transparent PNG gives the cleanest look on the white payslip background.
+- Do NOT rename this folder or move it outside the public directory.
+- Supported formats: .png, .jpg, .jpeg  (but filename must remain company-logo.png)

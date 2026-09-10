@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpsMaster - Login</title>
+    <link rel="stylesheet" href="/css/tailwind.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .login-card { background: white; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); }
+    </style>
+</head>
+<body class="flex items-center justify-center">
+    <div class="login-card p-8 w-full max-w-md">
+        <div class="text-center mb-8">
+            <!-- OpsMaster Logo -->
+            <div class="flex justify-center mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="90" height="90">
+              <!-- Gear outer teeth -->
+              <g fill="#1a2e5a">
+                <rect x="88" y="4" width="24" height="18" rx="4"/>
+                <rect x="88" y="178" width="24" height="18" rx="4"/>
+                <rect x="4" y="88" width="18" height="24" rx="4"/>
+                <rect x="178" y="88" width="18" height="24" rx="4"/>
+                <rect x="34" y="22" width="18" height="24" rx="4" transform="rotate(-45 43 34)"/>
+                <rect x="144" y="22" width="18" height="24" rx="4" transform="rotate(45 153 34)"/>
+                <rect x="34" y="154" width="18" height="24" rx="4" transform="rotate(45 43 166)"/>
+                <rect x="144" y="154" width="18" height="24" rx="4" transform="rotate(-45 153 166)"/>
+              </g>
+              <!-- Top-left quadrant: dark navy -->
+              <path d="M100,100 L100,30 A70,70 0 0,0 30,100 Z" fill="#1a2e5a"/>
+              <!-- Top-right quadrant: orange with warehouse icon -->
+              <path d="M100,100 L100,30 A70,70 0 0,1 170,100 Z" fill="#e87722"/>
+              <!-- Bottom-left quadrant: green with people icon -->
+              <path d="M100,100 L30,100 A70,70 0 0,0 100,170 Z" fill="#4a8c3f"/>
+              <!-- Bottom-right quadrant: blue with wrench icon -->
+              <path d="M100,100 L170,100 A70,70 0 0,1 100,170 Z" fill="#2d7ec4"/>
+              <!-- Center circle -->
+              <circle cx="100" cy="100" r="28" fill="white" stroke="#1a2e5a" stroke-width="6"/>
+              <!-- Warehouse icon (top-right) -->
+              <g fill="white" transform="translate(120,52)">
+                <rect x="-14" y="2" width="28" height="18" rx="1"/>
+                <polygon points="-17,-4 0,-14 17,-4"/>
+                <rect x="-5" y="8" width="10" height="12" rx="1"/>
+              </g>
+              <!-- People icon (bottom-left) -->
+              <g fill="white" transform="translate(68,135)">
+                <circle cx="0" cy="-10" r="6"/>
+                <path d="M-12,4 Q0,-4 12,4 L12,14 L-12,14 Z"/>
+                <circle cx="-14" cy="-8" r="4.5"/>
+                <path d="M-22,4 Q-14,0 -6,4 L-6,14 L-22,14 Z"/>
+              </g>
+              <!-- Wrench icon (bottom-right) -->
+              <g fill="white" transform="translate(138,138) rotate(-35)">
+                <rect x="-4" y="-18" width="8" height="28" rx="3"/>
+                <rect x="-8" y="-22" width="16" height="10" rx="3"/>
+                <rect x="-8" y="7" width="16" height="8" rx="3"/>
+              </g>
+              <!-- Curved arc accent -->
+              <path d="M 152,148 A 70,70 0 0,1 100,170" fill="none" stroke="#1a2e5a" stroke-width="7" stroke-linecap="round"/>
+            </svg>
+            </div>
+            <div class="mb-1">
+              <span style="font-family:Arial,sans-serif;font-size:2rem;font-weight:800;color:#1a2e5a;letter-spacing:-1px;">Ops</span><span style="font-family:Arial,sans-serif;font-size:2rem;font-weight:800;color:#e87722;letter-spacing:-1px;">Master</span>
+            </div>
+            <p style="font-family:Arial,sans-serif;font-size:0.72rem;color:#888;letter-spacing:0.04em;" class="mb-2">&#8212; Manage. Maintain. Empower. Excel. &#8212;</p>
+            <div data-login-contact></div>
+            <p class="text-gray-500 text-sm mt-3">Sign in to continue</p>
+        </div>
+        <form id="login-form" class="space-y-6">
+            <div>
+                <label for="login-id" class="block text-sm font-medium text-gray-700 mb-1">Login ID</label>
+                <input type="text" id="login-id" required autocomplete="username" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter your login ID">
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" id="password" required autocomplete="current-password" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter password">
+            </div>
+            <div id="login-error" class="hidden text-red-600 text-sm"></div>
+            <button type="submit" class="w-full bg-indigo-600 text-white rounded-lg px-4 py-2 font-semibold hover:bg-indigo-700 transition">
+                <i class="fas fa-sign-in-alt mr-2"></i>Sign In
+            </button>
+        </form>
+    </div>
+    <script src="js/developer-info.js?v=1"></script>
+    <script src="js/config.js?v=12"></script>
+    <script src="js/login.js?v=3"></script>
+</body>
+</html>

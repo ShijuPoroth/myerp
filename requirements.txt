@@ -1,0 +1,133 @@
+============================================================
+ MWH Management ERP - Requirements & Setup Guide
+============================================================
+
+1. SYSTEM REQUIREMENTS
+------------------------------------------------------------
+- OS: Windows 10/11, Ubuntu 22.04+, or Debian 12+
+- Node.js: v18.x or higher (v20.x recommended)
+- npm: v9.x or higher
+- RAM: Minimum 2GB (4GB recommended)
+- Disk: Minimum 10GB free space
+- SQLite3: Bundled with sqlite3 npm package (no separate install needed)
+
+2. NODE.JS DEPENDENCIES
+------------------------------------------------------------
+The following packages are installed via `npm install` using package.json:
+
+Production dependencies:
+- bcrypt ^6.0.0          - Password hashing
+- body-parser ^1.20.2    - Request body parsing
+- cors ^2.8.5            - Cross-origin resource sharing
+- dotenv ^17.4.2         - Environment variable loading
+- exceljs ^4.4.0         - Excel (.xlsx) export with embedded images
+- express ^4.18.2        - Web framework
+- express-rate-limit ^8.5.2 - API rate limiting
+- express-session ^1.19.0 - Session management
+- helmet ^8.3.0          - HTTP security headers
+- multer ^1.4.5-lts.1    - File upload handling
+- nodemailer ^9.0.3      - Email sending (password reset, notifications)
+- sqlite3 ^5.1.6         - SQLite database driver
+
+Dev dependencies:
+- tailwindcss ^3.4.17    - CSS framework (for building UI styles)
+
+3. ENVIRONMENT VARIABLES (.env)
+------------------------------------------------------------
+Copy .env.example to .env and fill in the values:
+
+SMTP_HOST=smtp.office365.com
+SMTP_PORT=587
+SMTP_USER=your-email@outlook.com
+SMTP_PASS=your-password-here
+NODE_ENV=production
+PORT=3000
+HOST=127.0.0.1
+SESSION_SECRET=replace-with-random-64-byte-hex
+CLIENT_ORIGIN=https://yourdomain.com
+
+Generate a session secret:
+  node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+
+4. INSTALLATION STEPS
+------------------------------------------------------------
+Step 1: Install Node.js
+  - Windows: Download from https://nodejs.org
+  - Linux:   curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+             apt install -y nodejs
+
+Step 2: Install project dependencies
+  cd /path/to/MWH Management
+  npm install
+
+Step 3: Configure environment
+  cp .env.example .env
+  (Edit .env with your values)
+
+Step 4: Build CSS (only if tailwind changes are needed)
+  npm run build:css
+
+Step 5: Start the application
+  npm start
+  (or: node server.js)
+
+Step 6: Access the application
+  Open browser to http://localhost:3000
+
+5. PRODUCTION DEPLOYMENT (Linux VPS)
+------------------------------------------------------------
+5a. Install PM2 process manager:
+  npm install -g pm2
+
+5b. Start with PM2:
+  pm2 start server.js --name mwh-erp
+  pm2 startup
+  pm2 save
+
+5c. Install Cloudflare Tunnel (for secure access without exposing ports):
+  curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
+  chmod +x /usr/local/bin/cloudflared
+  cloudflared service install
+
+5d. Copy tunnel credentials from your local machine:
+  scp ~/.cloudflared/* root@VPS_IP:/root/.cloudflared/
+
+6. DATABASE
+------------------------------------------------------------
+- Database file: mwh_management.db (SQLite)
+- Schema file: database-schema.md
+- Database is auto-created on first run
+- Migrations run automatically on server startup
+
+7. FILE UPLOADS
+------------------------------------------------------------
+- Upload directory: uploads/
+- Ensure the directory exists and has write permissions
+- Max file size: 5MB (images only)
+- Supported formats: jpg, jpeg, png, gif, webp
+
+8. APPLICATION MODULES
+------------------------------------------------------------
+- Equipment Management (with maintenance, transfers, write-offs, returns)
+- HR Management (employees, payroll, accommodation)
+- Catering Management
+- Uniforms Management
+- Dashboard & Reports
+- Admin Settings (users, permissions, column visibility)
+- Excel/CSV/PDF Export with embedded images
+
+9. CLOUDFLARE TUNNEL (Optional but recommended)
+------------------------------------------------------------
+- Domain: erp.shiju.online
+- Tunnel provides: SSL, DDoS protection, no open inbound ports
+- Only one cloudflared instance should connect to a tunnel at a time
+- To restart on Windows: sc stop cloudflared && sc start cloudflared
+- To run manually: "C:\Program Files (x86)\cloudflared\cloudflared.exe" tunnel run
+
+10. TROUBLESHOOTING
+------------------------------------------------------------
+- Port already in use: Change PORT in .env or kill the process
+- Database locked: Ensure only one instance is running
+- CSS not updating: Run `npm run build:css`
+- Cache issues: Hard refresh browser (Ctrl+F5) or bump version params in index.html
+- Cloudflare Error 1033: cloudflared service not running, restart it
