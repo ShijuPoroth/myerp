@@ -36,7 +36,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "https://cdnjs.cloudflare.com"],
       styleSrcAttr: ["'unsafe-inline'"],
-      scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "'sha256-nLWmrzOF3jLZ+2SX/ZZNUsLMkyR2x9HzZPo+Ow80LcE='", "'sha256-s0uowI2IAIZXG34CYq41+5xje3Yz21P2TLtimlAn3Lc='"],
+      scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "'sha256-nLWmrzOF3jLZ+2SX/ZZNUsLMkyR2x9HzZPo+Ow80LcE='", "'sha256-s0uowI2IAIZXG34CYq41+5xje3Yz21P2TLtimlAn3Lc='", "'sha256-nVYTkovq2PYxSxiqGgAINV0VTNw7d61XZe2PQvbQrRk='"],
       scriptSrcAttr: ["'unsafe-inline'"],
       objectSrc: ["'none'"],
       baseUri: ["'none'"],
@@ -135,6 +135,7 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/app', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 app.use((req, res, next) => {
   if (req.path === '/login.html') return res.redirect(301, '/login');
