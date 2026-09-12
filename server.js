@@ -33,7 +33,7 @@ app.set('trust proxy', 1);
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
+      defaultSrc: ["'none'"],
       styleSrc: ["'self'", "https://cdnjs.cloudflare.com"],
       styleSrcAttr: ["'unsafe-inline'"],
       scriptSrc: ["'self'", "https://cdnjs.cloudflare.com"],
