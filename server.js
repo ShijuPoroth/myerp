@@ -44,6 +44,11 @@ app.use(helmet({
       fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
       connectSrc: ["'self'"]
     }
+  },
+  strictTransportSecurity: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
   }
 }));
 
