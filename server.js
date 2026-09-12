@@ -49,7 +49,9 @@ app.use(helmet({
     maxAge: 31536000,
     includeSubDomains: true,
     preload: true
-  }
+  },
+  crossOriginEmbedderPolicy: { policy: "require-corp" },
+  crossOriginResourcePolicy: { policy: "same-origin" }
 }));
 
 // Rate limit login attempts
