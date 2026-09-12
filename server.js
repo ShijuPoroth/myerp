@@ -36,7 +36,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "https://cdnjs.cloudflare.com"],
       styleSrcAttr: ["'unsafe-inline'"],
-      scriptSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+      scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "'sha256-7z++peN0VDVzFLVcOcv50T9xKH2dqyjrJszECytR1UM='"],
       scriptSrcAttr: ["'unsafe-inline'"],
       objectSrc: ["'none'"],
       baseUri: ["'none'"],
