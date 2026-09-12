@@ -1,0 +1,110 @@
+/* Custom styles moved from inline <style> blocks for CSP compliance */
+
+/* index.html - main app styles */
+@keyframes filterBlink {
+    0%, 49% { background-color: rgb(254 240 138); }
+    50%, 100% { background-color: rgb(255 255 255); }
+}
+.filter-active-blink {
+    animation: filterBlink 1.5s steps(1, end) infinite;
+}
+html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+.app-container { display: grid; grid-template-columns: 256px 1fr; height: 100vh; overflow: hidden; opacity: 0; transition: opacity 0.15s ease; }
+.app-container.session-ready { opacity: 1; }
+.app-sidebar { overflow-y: auto; }
+.app-main { display: flex; flex-direction: column; overflow: hidden; min-width: 0; height: 100vh; box-sizing: border-box; }
+.app-main > header { flex-shrink: 0; }
+.app-main > section { flex: 1; min-height: 0; overflow: hidden; }
+#admin-section { display: flex; flex-direction: column; height: 100%; overflow: hidden; padding: 24px; box-sizing: border-box; }
+#admin-section > .flex.gap-4 { flex-shrink: 0; flex-wrap: wrap; }
+.admin-tab-content { flex: 1; overflow-y: auto; min-height: 0; padding-top: 12px; }
+#admin-contacts-settings-tab,
+#admin-location-settings-tab,
+#admin-equipment-settings-tab,
+#admin-warehouse-settings-tab,
+#admin-supplier-settings-tab,
+#admin-hr-settings-tab { display: flex; flex-direction: column; overflow: hidden; }
+.contacts-settings-tab-content:not(.hidden),
+.location-settings-tab-content:not(.hidden),
+.equipment-settings-tab-content:not(.hidden),
+.warehouse-settings-tab-content:not(.hidden),
+.supplier-settings-tab-content:not(.hidden),
+.hr-settings-tab-content:not(.hidden) {
+    flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding-top: 8px;
+}
+.contacts-settings-tab-content:not(.hidden) > .flex,
+.location-settings-tab-content:not(.hidden) > .flex,
+.equipment-settings-tab-content:not(.hidden) > .flex,
+.warehouse-settings-tab-content:not(.hidden) > .flex,
+.supplier-settings-tab-content:not(.hidden) > .flex,
+.hr-settings-tab-content:not(.hidden) > .flex { flex-shrink: 0; flex-wrap: wrap; }
+.contacts-settings-tab-content:not(.hidden) > .bg-white,
+.location-settings-tab-content:not(.hidden) > .bg-white,
+.equipment-settings-tab-content:not(.hidden) > .bg-white,
+.warehouse-settings-tab-content:not(.hidden) > .bg-white,
+.supplier-settings-tab-content:not(.hidden) > .bg-white,
+.hr-settings-tab-content:not(.hidden) > .bg-white,
+.contacts-settings-tab-content:not(.hidden) > .table-scroll-container,
+.location-settings-tab-content:not(.hidden) > .table-scroll-container,
+.equipment-settings-tab-content:not(.hidden) > .table-scroll-container,
+.warehouse-settings-tab-content:not(.hidden) > .table-scroll-container,
+.supplier-settings-tab-content:not(.hidden) > .table-scroll-container,
+.hr-settings-tab-content:not(.hidden) > .table-scroll-container {
+    flex: 1; min-height: 0; overflow-x: auto; overflow-y: auto; max-height: none !important;
+}
+.contacts-settings-tab-content:not(.hidden) > .bg-white.rounded-lg.shadow.p-3,
+.location-settings-tab-content:not(.hidden) > .bg-white.rounded-lg.shadow.p-3,
+.equipment-settings-tab-content:not(.hidden) > .bg-white.rounded-lg.shadow.p-3,
+.warehouse-settings-tab-content:not(.hidden) > .bg-white.rounded-lg.shadow.p-3,
+.supplier-settings-tab-content:not(.hidden) > .bg-white.rounded-lg.shadow.p-3,
+.hr-settings-tab-content:not(.hidden) > .bg-white.rounded-lg.shadow.p-3 { flex: none !important; flex-shrink: 0; }
+#hr-section { height: 100%; overflow: hidden; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; }
+#hr-section > .flex { flex-shrink: 0; flex-wrap: wrap; }
+.hr-tab-content:not(.hidden) { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+.accommodation-tab-content:not(.hidden) { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
+.accommodation-tab-content:not(.hidden) > .bg-white.rounded-lg.shadow.p-3 { flex-shrink: 0; }
+.accommodation-tab-content:not(.hidden) > .bg-white.rounded-lg.shadow:not(.p-3) { flex: 1; min-height: 0; overflow: auto; max-height: none !important; }
+#accommodation-room-assignments-tab table { border-collapse: separate; border-spacing: 0; }
+#accommodation-room-assignments-tab thead th { position: sticky; top: 0; z-index: 20; background-color: #dbeafe; }
+#equipment-section { height: 100%; overflow: hidden; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; }
+#equipment-section > .flex { flex-shrink: 0; flex-wrap: wrap; }
+.equipment-sub-tab-content:not(.hidden) { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding-top: 12px; }
+.equipment-sub-tab-content:not(.hidden) > .flex { flex-shrink: 0; }
+.equipment-sub-tab-content:not(.hidden) > .table-scroll-container { flex: 1; min-height: 0; overflow-x: auto; overflow-y: auto; max-height: none !important; }
+#catering-section { height: 100%; overflow: hidden; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; }
+#catering-section > .flex { flex-shrink: 0; flex-wrap: wrap; }
+.catering-sub-tab-content:not(.hidden) { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding-top: 12px; }
+.catering-sub-tab-content:not(.hidden) > .flex { flex-shrink: 0; }
+.catering-sub-tab-content:not(.hidden) > .table-scroll-container { flex: 1; min-height: 0; overflow-x: auto; overflow-y: auto; max-height: none !important; }
+.hr-tab-content:not(.hidden) > .flex { flex-shrink: 0; flex-wrap: wrap; }
+.payment-tab-content:not(.hidden) { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+.payment-tab-content:not(.hidden) > .flex { flex-shrink: 0; }
+.payment-tab-content:not(.hidden) > .mb-3 { flex-shrink: 0; }
+.payment-tab-content:not(.hidden) > .mb-4 { flex-shrink: 0; }
+.payment-tab-content:not(.hidden) > .bg-white.rounded-lg.shadow.p-3 { flex: none !important; flex-shrink: 0; }
+#payroll-table-wrapper, #attendance-table-wrapper { flex: 1; min-height: 0; overflow-x: auto; overflow-y: auto; }
+#payment-advance-payments-tab > .grid { flex: 1; min-height: 0; overflow-y: auto; }
+.employee-management-tab-content:not(.hidden) { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+.employee-management-tab-content:not(.hidden) > .flex { flex-shrink: 0; }
+.employee-management-tab-content:not(.hidden) > .flex.flex-wrap { flex-shrink: 0; }
+.employee-management-tab-content:not(.hidden) > .bg-white.rounded-lg.shadow.p-3 { flex: none !important; flex-shrink: 0; }
+.employee-management-tab-content:not(.hidden) > .bg-white:not(.rounded-lg.shadow.p-3) { flex: 1; min-height: 0; overflow-x: auto; overflow-y: auto; }
+.employee-management-tab-content:not(.hidden) .table-scroll-container { flex: 1; min-height: 0; overflow-x: auto; overflow-y: auto; max-height: none !important; }
+.uniform-tab-content:not(.hidden) { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+.uniform-tab-content:not(.hidden) > .flex { flex-shrink: 0; }
+.uniform-tab-content:not(.hidden) > .bg-white.rounded-lg.shadow.p-3 { flex: none !important; flex-shrink: 0; }
+.uniform-tab-content:not(.hidden) > .bg-white:not(.rounded-lg.shadow.p-3) { flex: 1; min-height: 0; overflow-x: auto; overflow-y: auto; }
+.sidebar-item.active { background-color: #1e40af; }
+#audit-section { height: 100%; overflow: hidden; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; }
+#audit-section > .bg-white.rounded-lg.shadow.p-3 { flex: none !important; flex-shrink: 0; }
+#audit-section > .bg-white:not(.rounded-lg.shadow.p-3), #audit-section > .rounded-lg.border { flex: 1; min-height: 0; overflow-x: auto; overflow-y: auto; }
+.modal { display: none; }
+.modal.active, .modal.flex { display: flex; }
+.eq-col-hidden { display: none !important; }
+[data-section-hidden="true"] { display: none; }
+.app-container { visibility: hidden; }
+.app-container.session-ready { visibility: visible; }
+
+/* login.html - login page styles */
+.login-page-body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+.login-card { background: white; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); }
