@@ -1,5 +1,6 @@
 // UNIFORM TYPES
 async function loadUniformTypes() {
+    showTableLoading('uniform-types-table-body', 'Loading uniform types...');
     try {
         const response = await fetch(`${API_BASE}/uniform-types`);
         allUniformTypes = await response.json();

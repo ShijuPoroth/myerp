@@ -1,5 +1,6 @@
 // DOCUMENT TYPES
 async function loadDocumentTypes() {
+    showTableLoading('document-types-table-body', 'Loading document types...');
     try {
         const response = await fetch(`${API_BASE}/document-types`);
         allDocumentTypes = await response.json();

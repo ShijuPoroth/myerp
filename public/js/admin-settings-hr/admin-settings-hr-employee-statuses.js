@@ -1,5 +1,6 @@
 // EMPLOYEE STATUSES
 async function loadEmployeeStatuses() {
+    showTableLoading('employee-statuses-table-body', 'Loading employee statuses...');
     try {
         const response = await fetch(`${API_BASE}/employee-statuses`);
         allEmployeeStatuses = await response.json();

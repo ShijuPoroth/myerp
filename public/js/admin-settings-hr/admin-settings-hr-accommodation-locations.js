@@ -4,6 +4,7 @@ let allCountriesForAccommodation = [];
 let allLocationTypesForAccommodation = [];
 
 async function loadAccommodationLocations() {
+    showTableLoading('accommodation-locations-table-body', 'Loading accommodation locations...');
     try {
         const [locRes, countryRes, ltRes] = await Promise.all([
             fetch(`${API_BASE}/accommodation-locations`),

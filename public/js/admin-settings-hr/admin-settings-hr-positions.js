@@ -1,5 +1,6 @@
 // POSITIONS
 async function loadPositions() {
+    showTableLoading('positions-table-body', 'Loading positions...');
     try {
         const response = await fetch(`${API_BASE}/positions`);
         allPositions = await response.json();

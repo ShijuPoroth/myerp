@@ -1,5 +1,6 @@
 // UNIFORM SIZES
 async function loadUniformSizes() {
+    showTableLoading('uniform-sizes-table-body', 'Loading uniform sizes...');
     try {
         const response = await fetch(`${API_BASE}/uniform-sizes`);
         allUniformSizes = await response.json();

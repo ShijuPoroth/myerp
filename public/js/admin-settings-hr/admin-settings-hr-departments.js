@@ -1,5 +1,6 @@
 // DEPARTMENTS
 async function loadDepartments() {
+    showTableLoading('departments-table-body', 'Loading departments...');
     try {
         const response = await fetch(`${API_BASE}/departments`);
         allDepartments = await response.json();

@@ -34,6 +34,7 @@ function showAuthorizerTab(tab) {
 let authorizerEquipmentRequests = [];
 
 async function loadAuthorizerEquipmentRequests() {
+    showTableLoading('authorizer-equipment-table-body', 'Loading write-off requests...');
     try {
         const response = await fetch(`${API_BASE}/equipment/write-offs`);
         if (!response.ok) {
@@ -206,7 +207,8 @@ function closeViewWriteOffRequestModal() {
 
 let authorizerReturnRequests = [];
 
-async function loadAuthorizerReturnRequests() {
+asynshowTableLoading('authorizer-returns-table-body', 'Loading return requests...');
+    c function loadAuthorizerReturnRequests() {
     try {
         const response = await fetch(`${API_BASE}/equipment/returns`);
         if (!response.ok) {

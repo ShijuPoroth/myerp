@@ -32,6 +32,7 @@ let allEquipmentOwners = [];
 
 // CONTACT CATEGORIES
 async function loadContactCategories() {
+    showTableLoading('contact-categories-table-body', 'Loading contact categories...');
     try {
         const response = await fetch(`${API_BASE}/contact-categories`);
         allContactCategories = await response.json();
@@ -164,6 +165,7 @@ async function deleteContactCategory(id) {
 
 // CONTACT STATUSES
 async function loadContactStatuses() {
+    showTableLoading('contact-statuses-table-body', 'Loading contact statuses...');
     try {
         const response = await fetch(`${API_BASE}/contact-statuses`);
         allContactStatuses = await response.json();
@@ -296,6 +298,7 @@ async function deleteContactStatus(id) {
 
 // CONTACT STATUS ASSIGNMENTS
 async function loadContactStatusAssignments() {
+    showTableLoading('contact-status-assignments-table-body', 'Loading status assignments...');
     try {
         const response = await fetch(`${API_BASE}/contact-status-assignments`);
         allContactStatusAssignments = await response.json();
@@ -410,6 +413,7 @@ async function deleteContactStatusAssignment(id) {
 
 // COUNTRIES
 async function loadCountries() {
+    showTableLoading('countries-table-body', 'Loading countries...');
     try {
         const response = await fetch(`${API_BASE}/countries`);
         allCountries = await response.json();
@@ -513,6 +517,7 @@ async function deleteCountry(id) {
 
 // LOCATION TYPES
 async function loadLocationTypes() {
+    showTableLoading('location-types-table-body', 'Loading location types...');
     try {
         const response = await fetch(`${API_BASE}/location-types`);
         allLocationTypes = await response.json();
@@ -679,6 +684,7 @@ async function deleteLocationType(id) {
 
 // SUB LOCATION TYPES
 async function loadSubLocationTypes() {
+    showTableLoading('sub-location-types-table-body', 'Loading sub-location types...');
     try {
         const response = await fetch(`${API_BASE}/sub-location-types`);
         allSubLocationTypes = await response.json();
@@ -873,6 +879,7 @@ async function deleteSubLocationType(id) {
 
 // BUSINESS TYPES
 async function loadBusinessTypes() {
+    showTableLoading('business-types-table-body', 'Loading business types...');
     try {
         const response = await fetch(`${API_BASE}/business-types`);
         allBusinessTypes = await response.json();
@@ -1012,6 +1019,7 @@ async function deleteBusinessType(id) {
 
 // BUSINESS TYPE ASSIGNMENTS
 async function loadBusinessTypeAssignments() {
+    showTableLoading('business-type-assignments-table-body', 'Loading business type assignments...');
     try {
         const response = await fetch(`${API_BASE}/business-type-assignments`);
         allBusinessTypeAssignments = await response.json();
@@ -1249,6 +1257,7 @@ async function deleteBusinessTypeAssignment(id) {
 
 // ITEM CATEGORIES
 async function loadItemCategories() {
+    showTableLoading('item-categories-table-body', 'Loading item categories...');
     try {
         const response = await fetch(`${API_BASE}/item-categories`);
         allItemCategories = await response.json();
@@ -1395,6 +1404,7 @@ async function deleteItemCategory(id) {
 
 // ITEM UNITS
 async function loadItemUnits() {
+    showTableLoading('item-units-table-body', 'Loading item units...');
     try {
         const response = await fetch(`${API_BASE}/item-units`);
         allItemUnits = await response.json();
@@ -1535,6 +1545,7 @@ async function deleteItemUnit(id) {
 
 // ITEM SUBCATEGORIES
 async function loadItemSubcategories() {
+    showTableLoading('item-subcategories-table-body', 'Loading item subcategories...');
     try {
         const response = await fetch(`${API_BASE}/item-subcategories`);
         allItemSubcategories = await response.json();
@@ -1730,6 +1741,7 @@ async function deleteItemSubcategory(id) {
 
 // ITEM TYPES
 async function loadItemTypes() {
+    showTableLoading('item-types-table-body', 'Loading item types...');
     try {
         const response = await fetch(`${API_BASE}/item-types`);
         allItemTypes = await response.json();
@@ -2057,6 +2069,7 @@ async function deleteItemType(id) {
 
 // ITEMS
 async function loadItems() {
+    showTableLoading('items-table-body', 'Loading items...');
     try {
         const response = await fetch(`${API_BASE}/items`);
         allItems = await response.json();
@@ -2454,6 +2467,7 @@ async function deleteItem(id) {
 
 // SUPPLIERS
 async function loadSuppliers() {
+    showTableLoading('suppliers-table-body', 'Loading suppliers...');
     try {
         const response = await fetch(`${API_BASE}/suppliers`);
         allSuppliers = await response.json();
@@ -2590,6 +2604,7 @@ async function deleteSupplier(id) {
 
 // SUPPLIER ASSIGNMENTS
 async function loadSupplierAssignments() {
+    showTableLoading('supplier-assignments-table-body', 'Loading supplier assignments...');
     try {
         const response = await fetch(`${API_BASE}/suppliers/assignments`);
         allSupplierAssignments = await response.json();
@@ -2815,6 +2830,7 @@ async function deleteSupplierAssignment(id) {
 
 // EQUIPMENT STATUSES
 async function loadEquipmentStatuses() {
+    showTableLoading('equipment-statuses-table-body', 'Loading equipment statuses...');
     try {
         const response = await fetch(`${API_BASE}/equipment/statuses`);
         allEquipmentStatuses = await response.json();
@@ -2941,6 +2957,7 @@ async function deleteEquipmentStatus(id) {
 let allEquipmentsSettings = [];
 
 async function loadEquipmentsSettings() {
+    showTableLoading('equipments-settings-table-body', 'Loading equipment catalog...');
     try {
         const response = await fetch(`${API_BASE}/equipment-catalog`);
         allEquipmentsSettings = await response.json();
@@ -3050,6 +3067,7 @@ async function deleteEquipmentFromSettings(id) {
 let allEquipmentConditions = [];
 
 async function loadEquipmentConditions() {
+    showTableLoading('equipment-conditions-table-body', 'Loading equipment conditions...');
     try {
         const response = await fetch(`${API_BASE}/equipment/conditions`);
         allEquipmentConditions = await response.json();
@@ -3166,6 +3184,7 @@ async function deleteEquipmentCondition(id) {
 
 // EQUIPMENT OWNERS
 async function loadEquipmentOwners() {
+    showTableLoading('equipment-owners-table-body', 'Loading equipment owners...');
     try {
         const response = await fetch(`${API_BASE}/equipment/owners`);
         allEquipmentOwners = await response.json();
@@ -5019,6 +5038,7 @@ let allEquipmentItems = [];
 let pmTaskListBuffer = [];
 
 async function loadPMTasks() {
+    showTableLoading('pm-tasks-table-body', 'Loading PM tasks...');
     try {
         const [tasksRes, itemsRes] = await Promise.all([
             fetch(`${API_BASE}/pm-tasks`),

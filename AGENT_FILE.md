@@ -1,7 +1,7 @@
 # MWH Management ERP — Agent Reference File
 
 > **Purpose:** Complete structural backup of the app. Use this to recover context without reading the entire codebase.
-> **Last Updated:** 2026-08-26
+> **Last Updated:** 2026-09-12
 
 ---
 
@@ -26,7 +26,7 @@
 | Backend | Express 4.18, Node.js |
 | Database | SQLite3 (sqlite3 npm package) |
 | Auth | express-session, bcrypt |
-| Security | helmet, cors, express-rate-limit |
+| Security | helmet (CSP, HSTS, COEP, COOP, CORP, XFO), cors, express-rate-limit |
 | File Uploads | multer |
 | Email | nodemailer (SMTP) |
 | Excel Export | exceljs |
@@ -81,6 +81,10 @@ MWH Management/
 │   ├── mwh_index.html         # Alternate landing page
 │   ├── partials/
 │   │   └── modals.html        # Shared modal templates (~220KB, loaded via fetch)
+│   ├── css/
+│   │   ├── tailwind.css       # Tailwind CSS framework
+│   │   ├── all.min.css        # Font Awesome 6 CSS
+│   │   └── custom.css         # Custom styles (extracted from inline <style> blocks for CSP compliance)
 │   ├── company-logo/          # Uploaded company logos
 │   ├── images/                # Static images
 │   ├── signed-payslips/       # Uploaded signed payslip PDFs
@@ -178,9 +182,10 @@ MWH Management/
 - **`requireAuth`** (`middleware/auth.js`): Checks session for all `/api` routes (except auth routes mounted before it)
 - **`requireModulePermission(module, action)`**: Permission check for specific module actions
 - **`requireAdmin`**: Admin-only access for sensitive endpoints
-- **Helmet**: CSP headers configured for self + CDNs
+- **Helmet**: Strict CSP (`default-src 'none'`), HSTS (1 year + preload), COEP, COOP, CORP, X-Frame-Options, Referrer-Policy, X-Content-Type-Options. CSP `scriptSrc` includes specific Cloudflare challenge platform script hashes. No `'unsafe-inline'` or `'unsafe-eval'` in `scriptSrc`. `styleSrcAttr` allows `'unsafe-inline'` for inline style attributes.
 - **CORS**: Allows localhost + `CLIENT_ORIGIN` env var
 - **Session**: SQLite-backed, 24h cookie, secure flag auto-upgraded for Cloudflare HTTPS
+- **Favicon**: Inline data URI favicons in `index.html` and `login.html`; `/favicon.ico` route returns 204
 
 ---
 
@@ -619,6 +624,13 @@ Single-page application with all sections in one HTML file (~297KB). Sections ar
 - **Files:** `public/js/equipment/equipment-core.js`
 - **Date:** 2026-08-23
 
+### CSP & Security Headers — Mozilla Observatory A+ (Enhancement)
+- **Issue:** Browser console showed CSP warnings, inline script blocks, and Cloudflare CSP Report-Only XHR spam. Mozilla Observatory score was -20 due to `'unsafe-inline'` in `scriptSrc`.
+- **Fix:** Extracted all inline `<style>` blocks from `index.html` and `login.html` into `public/css/custom.css`. Removed `'unsafe-inline'` from `scriptSrc`. Set `default-src` to `'none'`. Added specific SHA256 hashes for Cloudflare challenge platform inline scripts. Added HSTS (max-age 31536000, includeSubDomains, preload), COEP (`require-corp`), COOP (`same-origin`), CORP, X-Frame-Options, Referrer-Policy (`no-referrer`), X-Content-Type-Options (`nosniff`). Added inline data URI favicons to prevent 404s. Added `/favicon.ico` 204 route.
+- **Files:** `server.js`, `public/index.html`, `public/login.html`, `public/css/custom.css`
+- **Date:** 2026-09-12
+- **Result:** Mozilla Observatory A+ (100/100). Console clean except harmless Firefox font glyph bbox warnings and CSS vendor prefix warnings.
+
 ### In-Service Date Not Saving on Edit (Fixed)
 - **Issue:** When equipment status stayed "In Service", editing the `in_service_date` did not persist. The backend preferred the existing DB value over the form input (`alreadyInServiceDate || in_service_date`). This caused bad dates (e.g., year 0006) to be uncorrectable, which in turn generated illogical overdue PM schedule dates (e.g., `01/11/6`, `01/02/7`).
 - **Fix:** Swapped priority in `routes/equipment.js` to `in_service_date || alreadyInServiceDate || null` so the form value takes precedence when staying in service.
@@ -649,7 +661,7 @@ Single-page application with all sections in one HTML file (~297KB). Sections ar
 
 All JS files in `public/index.html` are loaded with `?v=N` query parameters. When modifying any JS file, bump the version number in `index.html` to force browser cache invalidation.
 
-Current versions (as of 2026-08-26):
+Current versions (as of 2026-09-12):
 - `equipment-core.js?v=110`
 - `uniforms.js?v=44`
 - `employees.js?v=90`
@@ -688,6 +700,18 @@ start-app.bat
 - SQLite file: `mwh_management.db`
 - Schema auto-created on server start via `config/database.js`
 - No migration system — tables use `CREATE TABLE IF NOT EXISTS`
+
+### Production Deployment
+- **Server:** Ubuntu 20.04, behind Cloudflare tunnel
+- **Server path:** `/www/wwwroot/opsmaster.net/MWH_Management`
+- **Process manager:** PM2 (process name: `mwh-erp`)
+- **Deploy steps:**
+  1. Local: `git add -A; git commit -m "message"; git push`
+  2. Server: `cd /www/wwwroot/opsmaster.net/MWH_Management && git pull && pm2 restart all`
+  3. Purge Cloudflare cache
+  4. Test in private/incognito window (to avoid browser cache)
+- **Domain:** `https://opsmaster.net`
+- **Mozilla Observatory:** A+ (100/100) as of 2026-09-12
 
 ---
 

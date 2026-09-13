@@ -1,5 +1,6 @@
 // NATIONALITIES
 async function loadNationalities() {
+    showTableLoading('nationalities-table-body', 'Loading nationalities...');
     try {
         const response = await fetch(`${API_BASE}/nationalities`);
         allNationalities = await response.json();

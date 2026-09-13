@@ -2,6 +2,7 @@
 let allRemunerationTypes = [];
 
 async function loadRemunerationTypes() {
+    showTableLoading('remuneration-types-table-body', 'Loading remuneration types...');
     try {
         const response = await fetch(`${API_BASE}/remuneration-types`);
         allRemunerationTypes = await response.json();

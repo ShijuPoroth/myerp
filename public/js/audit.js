@@ -2,6 +2,7 @@
 let allAuditLogs = [];
 
 async function loadAuditLogs() {
+    showTableLoading('audit-logs-table-body', 'Loading audit logs...');
     try {
         const moduleFilter = document.getElementById('audit-module-filter')?.value || '';
         const actionFilter = document.getElementById('audit-action-filter')?.value || '';

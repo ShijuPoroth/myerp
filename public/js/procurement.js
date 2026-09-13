@@ -7,6 +7,7 @@ let allItemTransfers = [];
 
 // PURCHASE ORDERS
 async function loadPurchaseOrders() {
+    showTableLoading('purchase-orders-table-body', 'Loading purchase orders...');
     try {
         const response = await fetch(`${API_BASE}/purchase-orders`);
         allPurchaseOrders = await response.json();
@@ -111,6 +112,7 @@ function viewPurchaseOrder(id) {
 
 // ITEMS RECEIPT
 async function loadItemsReceipt() {
+    showTableLoading('items-receipt-table-body', 'Loading items receipts...');
     try {
         const response = await fetch(`${API_BASE}/items-receipt`);
         allItemsReceipt = await response.json();
@@ -144,6 +146,7 @@ function openItemsReceiptModal() {
 
 // ITEM TRANSFER
 async function loadItemTransfers() {
+    showTableLoading('item-transfer-table-body', 'Loading item transfers...');
     try {
         const response = await fetch(`${API_BASE}/item-transfers`);
         allItemTransfers = await response.json();

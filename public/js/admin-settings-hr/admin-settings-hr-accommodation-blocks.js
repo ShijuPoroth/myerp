@@ -2,6 +2,7 @@
 let allAccommodationBlocks = [];
 
 async function loadAccommodationBlocks() {
+    showTableLoading('accommodation-blocks-table-body', 'Loading accommodation blocks...');
     try {
         const response = await fetch(`${API_BASE}/accommodation-blocks`);
         allAccommodationBlocks = await response.json();

@@ -1,6 +1,7 @@
 // Location management
 
 async function loadLocations() {
+    showTableLoading('locations-table-body', 'Loading locations...');
     try {
         const response = await fetch(`${API_BASE}/locations`);
         allLocations = await response.json();

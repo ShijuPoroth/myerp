@@ -2,6 +2,7 @@
 let allOvertimeTypes = [];
 
 async function loadOvertimeTypes() {
+    showTableLoading('overtime-types-table-body', 'Loading overtime types...');
     try {
         const response = await fetch(`${API_BASE}/overtime-types`);
         allOvertimeTypes = await response.json();

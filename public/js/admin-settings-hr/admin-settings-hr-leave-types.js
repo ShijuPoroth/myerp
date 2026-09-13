@@ -2,6 +2,7 @@
 let allLeaveTypes = [];
 
 async function loadLeaveTypes() {
+    showTableLoading('leave-types-table-body', 'Loading leave types...');
     try {
         const response = await fetch(`${API_BASE}/leave-types`);
         allLeaveTypes = await response.json();

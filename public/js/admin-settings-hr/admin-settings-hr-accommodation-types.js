@@ -1,5 +1,6 @@
 // ACCOMMODATION TYPES
 async function loadAccommodationTypes() {
+    showTableLoading('accommodation-types-table-body', 'Loading accommodation types...');
     try {
         const response = await fetch(`${API_BASE}/accommodation-types`);
         allAccommodationTypes = await response.json();
