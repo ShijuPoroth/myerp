@@ -43,22 +43,42 @@ function getAllowedFilters(req, callback) {
   });
 }
 
-// Helper: check module-manager table-level permission (add, edit or delete)
+// Map backend table names to access-control tab keys (module: equipment)
+const EQUIPMENT_TABLE_TO_TAB = {
+  'equipment': 'equipment',
+  'transfers': 'transfers',
+  'maintenance': 'maintenance',
+  'spare-parts': 'spare-parts',
+  'parts-items': 'spare-parts',
+  'parts-purchases': 'spare-parts',
+  'purchases': 'equipment',
+  'write-offs': 'write-offs',
+  'equipment-returns': 'returns'
+};
+
+// Helper: check module-manager tab-level permission (add, edit or delete).
+// Reads module_tab_permissions — the same table the Access Control UI writes.
+// No row = frontend default: add allowed until configured, edit/delete denied.
 function checkModulePermission(managerId, tableName, action, callback) {
   if (!managerId) return callback(null, false);
-  db.get('SELECT can_add, can_edit, can_delete FROM module_table_permissions WHERE module_manager_id = ? AND table_name = ?', [managerId, tableName], (err, row) => {
-    if (err) return callback(err, false);
-    if (!row) return callback(null, false);
-    if (action === 'add') return callback(null, row.can_add);
-    if (action === 'delete') return callback(null, row.can_delete);
-    callback(null, row.can_edit);
-  });
+  const tabKey = EQUIPMENT_TABLE_TO_TAB[tableName] || tableName;
+  const field = action === 'add' ? 'can_add' : action === 'delete' ? 'can_delete' : 'can_edit';
+  db.get(`SELECT ${field} AS allowed FROM module_tab_permissions WHERE module_manager_id = ? AND module_name = 'equipment' AND tab_key = ? AND subtab_key = ''`,
+    [managerId, tabKey], (err, row) => {
+      if (err) return callback(err, false);
+      if (!row) return callback(null, action === 'add');
+      callback(null, !!row.allowed);
+    });
 }
 
 function requireModulePermission(tableName, action) {
   return (req, res, next) => {
     if (req.session && req.session.moduleName === 'admin') return next();
-    const managerId = req.query.manager_id || req.body.manager_id;
+    if (!req.session || req.session.moduleName !== 'equipment' || !req.session.managerId) {
+      res.status(403).json({ error: `You do not have permission to ${action} this record.` });
+      return;
+    }
+    const managerId = req.session.managerId;
     checkModulePermission(managerId, tableName, action, (err, allowed) => {
       if (err) {
         res.status(500).json({ error: err.message });

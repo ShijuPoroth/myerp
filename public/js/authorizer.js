@@ -207,8 +207,8 @@ function closeViewWriteOffRequestModal() {
 
 let authorizerReturnRequests = [];
 
-asynshowTableLoading('authorizer-returns-table-body', 'Loading return requests...');
-    c function loadAuthorizerReturnRequests() {
+async function loadAuthorizerReturnRequests() {
+    showTableLoading('authorizer-returns-table-body', 'Loading return requests...');
     try {
         const response = await fetch(`${API_BASE}/equipment/returns`);
         if (!response.ok) {

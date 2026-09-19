@@ -3339,7 +3339,8 @@ const MODULE_TABS = {
         { key: 'transfers', label: 'Equipment Transfers' },
         { key: 'maintenance', label: 'Equipment Maintenance' },
         { key: 'spare-parts', label: 'Spare Parts' },
-        { key: 'write-offs', label: 'Write Offs' }
+        { key: 'write-offs', label: 'Write Offs' },
+        { key: 'returns', label: 'Equipment Returns' }
     ],
     'hr': [
         {

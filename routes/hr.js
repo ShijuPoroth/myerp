@@ -147,20 +147,54 @@ function resolveEmployeeId(employeeId, employeeName, callback) {
     });
 }
 
-// Module table permission helper
+// Map backend table names to access-control tabs/subtabs (module: hr)
+const HR_TABLE_TO_TAB = {
+  'employees': { tab: 'employee-management', subtab: '' },
+  'terminated-employees': { tab: 'employee-management', subtab: 'terminate-employee' },
+  'employee-transfers': { tab: 'employee-management', subtab: 'transfer-employee' },
+  'uniforms': { tab: 'uniform-management', subtab: '' },
+  'payments': { tab: 'payment-management', subtab: '' }
+};
+
+// Module tab permission helper.
+// Reads module_tab_permissions — the same table the Access Control UI writes.
+// Mirrors frontend hasTabActionPermission: subtab row is terminal; a denied
+// parent row falls back to any granting subtab; no row = add allowed only.
 function checkModulePermission(managerId, tableName, action, callback) {
   if (!managerId) return callback(null, false);
-  db.get('SELECT can_edit, can_delete FROM module_table_permissions WHERE module_manager_id = ? AND table_name = ?', [managerId, tableName], (err, row) => {
+  const map = HR_TABLE_TO_TAB[tableName] || { tab: tableName, subtab: '' };
+  const field = action === 'add' ? 'can_add' : action === 'delete' ? 'can_delete' : 'can_edit';
+  const permSql = `SELECT ${field} AS allowed FROM module_tab_permissions WHERE module_manager_id = ? AND module_name = 'hr' AND tab_key = ? AND subtab_key = ?`;
+  const scanSubtabs = () => db.get(
+    `SELECT 1 AS allowed FROM module_tab_permissions WHERE module_manager_id = ? AND module_name = 'hr' AND tab_key = ? AND subtab_key != '' AND ${field} = 1 LIMIT 1`,
+    [managerId, map.tab], (e, r) => e ? callback(e, false) : callback(null, !!r));
+  const verdict = (row) => {
+    if (row.allowed) return callback(null, true);
+    scanSubtabs();
+  };
+  db.get(permSql, [managerId, map.tab, map.subtab], (err, row) => {
     if (err) return callback(err, false);
-    if (!row) return callback(null, false);
-    callback(null, action === 'delete' ? row.can_delete : row.can_edit);
+    if (row) {
+      if (map.subtab) return callback(null, !!row.allowed); // subtab verdict is terminal
+      return verdict(row);
+    }
+    if (!map.subtab) return callback(null, action === 'add'); // nothing configured
+    db.get(permSql, [managerId, map.tab, ''], (err2, parent) => {
+      if (err2) return callback(err2, false);
+      if (!parent) return callback(null, action === 'add');
+      verdict(parent);
+    });
   });
 }
 
 function requireModulePermission(tableName, action) {
   return (req, res, next) => {
     if (req.session && req.session.moduleName === 'admin') return next();
-    const managerId = req.query.manager_id || req.body.manager_id;
+    if (!req.session || req.session.moduleName !== 'hr' || !req.session.managerId) {
+      res.status(403).json({ error: `You do not have permission to ${action} this record.` });
+      return;
+    }
+    const managerId = req.session.managerId;
     checkModulePermission(managerId, tableName, action, (err, allowed) => {
       if (err) {
         res.status(500).json({ error: err.message });

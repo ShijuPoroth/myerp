@@ -1,7 +1,7 @@
 # MWH Management ERP — Agent Reference File
 
 > **Purpose:** Complete structural backup of the app. Use this to recover context without reading the entire codebase.
-> **Last Updated:** 2026-09-14
+> **Last Updated:** 2026-09-19
 
 ---
 
@@ -687,6 +687,25 @@ Single-page application with all sections in one HTML file (~297KB). Sections ar
 - **Fix:** Added `DELETE /maintenance-logs/:id/photos/:photoId` endpoint in `routes/equipment.js` (following the same pattern as equipment photo deletion with `isPhotoReferencedElsewhere` check). Updated `loadMaintenancePhotosForEdit()` in `equipment-maintenance.js` to render each photo with a red X delete button overlay (visible on hover). Added `deleteMaintenancePhoto()` function that calls the API, removes the photo element from DOM, and shows "No photos yet" if all are deleted.
 - **Files:** `routes/equipment.js`, `public/js/equipment/equipment-maintenance.js`
 - **Date:** 2026-09-13
+
+### Owner-Based Access Filters for Equipment Managers (Enhancement)
+- **Issue:** Access Control could restrict equipment managers by location but not by owner (ES-KO, AGILITY, UN).
+- **Fix:** New `module_manager_owner_filters` table (same pattern as `module_manager_location_filters`). New `GET`/`PUT /api/module-managers/:id/owner-filters` endpoints. `getAllowedOwnerIds()` + combined `getAllowedFilters()` helper in `routes/equipment.js` applied to `GET /`, `/export-csv`, `/write-offs`, `/returns` (combined with location filter via AND). "Allowed Owners (empty = all)" checkbox panel added to equipment manager cards in Access Control.
+- **Files:** `config/database.js`, `routes/admin.js`, `routes/equipment.js`, `public/js/admin-settings.js`
+- **Date:** 2026-09-19
+
+### Equipment Returns Tab Missing from Access Control (Fixed)
+- **Issue:** `MODULE_TABS['equipment']` had no `returns` entry, so the Equipment Return tab couldn't be controlled per manager.
+- **Fix:** Added `{ key: 'returns', label: 'Equipment Returns' }` to `MODULE_TABS['equipment']`.
+- **Files:** `public/js/admin-settings.js`
+- **Date:** 2026-09-19
+
+### Permission Sync — Access Control Checkboxes Now Actually Enforced (Fix + Security)
+- **Issue:** Backend `requireModulePermission` checked `module_table_permissions` (legacy table with only orphaned rows for deleted managers 1–2), while the Access Control UI writes `module_tab_permissions`. Result: ALL manager write operations returned 403 regardless of UI settings. Additionally, `manager_id` was read from `req.query`/`req.body` — a manager could pass another manager's ID to inherit their permissions.
+- **Fix:** `checkModulePermission` in `routes/equipment.js` and `routes/hr.js` now reads `module_tab_permissions` (single source of truth), mapping table names to tab keys via `EQUIPMENT_TABLE_TO_TAB` (`equipment-returns`→`returns`, `parts-items`/`parts-purchases`→`spare-parts`, `purchases`→`equipment`) and `HR_TABLE_TO_TAB` (`terminated-employees`→`terminate-employee` subtab, `employee-transfers`→`transfer-employee` subtab, `uniforms`→`uniform-management`, `payments`→`payment-management`, `employees`→`employee-management`). Mirrors frontend `hasTabActionPermission` fallback chain: subtab row → parent row → subtab scan → default (no row = add allowed, edit/delete denied). `requireModulePermission` now uses `req.session.managerId` + verifies `session.moduleName` matches the route module — closes the ID-spoofing hole.
+- **IMPORTANT:** After deploy, review each manager's Access Control checkboxes — previously cosmetic ticks now enforce for real. Unconfigured tabs: add allowed, edit/delete denied (matches what the UI already showed).
+- **Files:** `routes/equipment.js`, `routes/hr.js`
+- **Date:** 2026-09-19
 
 ### Maintenance Log Print — Text Too Small (In Progress)
 - **Issue:** When printing or saving maintenance log details as PDF, text content was too small to read while photos appeared large.
