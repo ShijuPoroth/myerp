@@ -437,60 +437,7 @@ function printMaintenanceDetails(mode) {
         <html>
         <head>
             <title>Maintenance Log - ${log.maintenance_serial_number || ''}</title>
-            <style>
-                @page { margin: 12mm; size: A4 portrait; @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 11px; color: #999; } }
-                * { box-sizing: border-box; }
-                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; color: #1f2937; font-size: 14px; line-height: 1.5; }
-                .page { width: 100%; max-width: none; margin: 0; padding: 0; }
-                .doc-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1e40af; padding-bottom: 12px; margin-bottom: 16px; }
-                .doc-header .logo-block { flex: 1; }
-                .doc-header .logo-block img { max-height: 80px; max-width: 220px; object-fit: contain; display: block; }
-                .doc-header .logo-block .logo-fallback { display: none; font-size: 13px; color: #6b7280; font-style: italic; }
-                .doc-header .title-block { flex: 1; text-align: center; }
-                .doc-header .title-block h1 { margin: 0; font-size: 26px; font-weight: 700; color: #1e40af; letter-spacing: 0.3px; }
-                .doc-header .title-block p { margin: 4px 0 0; color: #6b7280; font-size: 14px; }
-                .doc-header .doc-id { text-align: right; flex: 1; }
-                .doc-header .doc-id .id-label { font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
-                .doc-header .doc-id .id-value { font-size: 20px; font-weight: 700; color: #1e40af; margin-top: 2px; }
-                .section { margin-bottom: 14px; break-inside: avoid; page-break-inside: avoid; }
-                .section-title { font-size: 14px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #d1d5db; padding-bottom: 5px; margin-bottom: 10px; }
-                .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
-                .detail-row { display: flex; align-items: baseline; }
-                .detail-row .label { width: 140px; min-width: 140px; color: #6b7280; font-weight: 500; font-size: 13px; }
-                .detail-row .value { flex: 1; font-weight: 600; color: #111827; }
-                .description-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; min-height: 50px; white-space: pre-wrap; font-size: 13px; }
-                table.parts { width: 100%; border-collapse: collapse; margin-top: 6px; break-inside: avoid; page-break-inside: avoid; }
-                table.parts thead tr { background: #1e40af; color: #fff; }
-                table.parts th { padding: 8px 10px; text-align: left; font-weight: 600; font-size: 13px; border: none; }
-                table.parts th:last-child { text-align: right; }
-                table.parts th:nth-child(3) { text-align: center; }
-                table.parts td { padding: 7px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; font-size: 13px; }
-                table.parts td:last-child { text-align: right; font-weight: 600; }
-                table.parts td:nth-child(3) { text-align: center; }
-                table.parts tbody tr:nth-child(even) { background: #f9fafb; }
-                .footer { margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 12px; color: #9ca3af; display: flex; justify-content: space-between; }
-                .signature-section { margin-top: 28px; page-break-inside: avoid; }
-                .signature-grid { display: flex; gap: 50px; }
-                .signature-box { flex: 1; }
-                .signature-label { font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 6px; }
-                .signature-name { font-size: 13px; color: #6b7280; margin-bottom: 30px; }
-                .signature-line { border-bottom: 1px solid #374151; height: 1px; margin-bottom: 3px; }
-                .signature-caption { font-size: 12px; color: #9ca3af; }
-                .status-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
-                .status-pending { background: #fef3c7; color: #92400e; }
-                .status-in-progress { background: #dbeafe; color: #1e40af; }
-                .status-completed { background: #d1fae5; color: #065f46; }
-                .status-on-hold { background: #f3f4f6; color: #4b5563; }
-                .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; break-inside: avoid; page-break-inside: avoid; }
-                .photo-grid img { max-width: 150px; max-height: 110px; border: 1px solid #d1d5db; border-radius: 4px; object-fit: cover; }
-                .no-print { text-align: center; margin-top: 30px; }
-                .no-print button { padding: 10px 24px; font-size: 14px; background: #1e40af; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
-                @media print {
-                    .no-print { display: none; }
-                    .page { padding: 0; }
-                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                }
-            </style>
+            <link rel="stylesheet" href="${window.location.origin}/css/maintenance-print.css">
         </head>
         <body>
             <div class="page">
@@ -596,21 +543,33 @@ function printMaintenanceDetails(mode) {
                     <span>Maintenance Log Details</span>
                 </div>
             </div>
-            <div class="no-print">
-                <button onclick="window.print()">Print / Save as PDF</button>
-            </div>
         </body>
         </html>
     `;
 
-    const printWindow = window.open('', '_blank', 'width=900,height=700');
-    printWindow.document.open();
-    printWindow.document.write(printHtml);
-    printWindow.document.close();
-    printWindow.onload = function() {
-        printWindow.focus();
-        printWindow.print();
+    // Print via a hidden iframe inside the app page: the browser's
+    // Save-PDF/print preview opens over the app and cancel/save simply
+    // returns to the app — no popup window left behind.
+    let iframe = document.getElementById('maintenance-print-frame');
+    if (iframe) iframe.remove();
+    iframe = document.createElement('iframe');
+    iframe.id = 'maintenance-print-frame';
+    iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;';
+    document.body.appendChild(iframe);
+
+    let written = false;
+    iframe.onload = function() {
+        if (!written) return; // skip the initial about:blank load
+        try { iframe.contentWindow.focus(); } catch (e) {}
+        iframe.contentWindow.onafterprint = function() { iframe.remove(); };
+        iframe.contentWindow.print();
     };
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(printHtml);
+    doc.close();
+    written = true;
 }
 
 function openAddMaintenanceForEquipment(equipmentId) {
