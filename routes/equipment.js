@@ -20,6 +20,29 @@ function getAllowedLocationIds(req, callback) {
   });
 }
 
+// Helper: get allowed owner_ids for current session manager (empty = no restriction)
+function getAllowedOwnerIds(req, callback) {
+  if (!req.session || !req.session.managerId || req.session.moduleName === 'admin') {
+    return callback(null, null); // null = no restriction (see all)
+  }
+  db.all('SELECT owner_id FROM module_manager_owner_filters WHERE module_manager_id = ?', [req.session.managerId], (err, rows) => {
+    if (err) return callback(err, null);
+    if (rows.length === 0) return callback(null, null); // no filters = no restriction (see all)
+    callback(null, rows.map(r => r.owner_id));
+  });
+}
+
+// Helper: get both location and owner filters in one call
+function getAllowedFilters(req, callback) {
+  getAllowedLocationIds(req, (err, locationIds) => {
+    if (err) return callback(err);
+    getAllowedOwnerIds(req, (err2, ownerIds) => {
+      if (err2) return callback(err2);
+      callback(null, locationIds, ownerIds);
+    });
+  });
+}
+
 // Helper: check module-manager table-level permission (add, edit or delete)
 function checkModulePermission(managerId, tableName, action, callback) {
   if (!managerId) return callback(null, false);
@@ -76,64 +99,47 @@ function uploadFileFilter(req, file, cb) {
 const upload = multer({
   storage: storage,
   fileFilter: uploadFileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }
+  limits: { fileSize: 15 * 1024 * 1024 }
 });
 
 // Dedup helper: if an identical file (by hash) already exists in uploads/, reuse it and delete the newly uploaded copy
 function dedupUploadedFile(file) {
-  return new Promise((resolve, reject) => {
-    if (!file || !file.path) return resolve(file);
-    const hash = crypto.createHash('sha256');
-    const stream = fs.createReadStream(file.path);
-    stream.on('data', chunk => hash.update(chunk));
-    stream.on('end', () => {
-      const fileHash = hash.digest('hex');
-      const uploadsDir = path.join(__dirname, '..', 'uploads');
-      fs.readdir(uploadsDir, (err, files) => {
-        if (err) {
-          // If we can't read the dir, just keep the new file
-          return resolve(file);
-        }
-        // Check each existing file (excluding the one just uploaded) for a hash match
-        const otherFiles = files.filter(f => f !== file.filename);
-        let checked = 0;
-        if (otherFiles.length === 0) return resolve(file);
-        let foundMatch = false;
-        otherFiles.forEach(f => {
-          if (foundMatch) return;
-          const otherPath = path.join(uploadsDir, f);
-          const otherHash = crypto.createHash('sha256');
-          const otherStream = fs.createReadStream(otherPath);
-          otherStream.on('data', chunk => otherHash.update(chunk));
-          otherStream.on('end', () => {
-            if (foundMatch) return;
-            checked++;
-            if (otherHash.digest('hex') === fileHash) {
-              foundMatch = true;
-              // Delete the newly uploaded duplicate, reuse the existing file
-              fs.unlink(file.path, () => {});
-              file.filename = f;
-              file.path = otherPath;
-              resolve(file);
-            } else if (checked === otherFiles.length) {
-              resolve(file);
-            }
-          });
-          otherStream.on('error', () => {
-            checked++;
-            if (checked === otherFiles.length && !foundMatch) resolve(file);
-          });
-        });
-      });
-    });
-    stream.on('error', err => reject(err));
-  });
+  if (!file || !file.path) return file;
+  const uploadsDir = path.join(__dirname, '..', 'uploads');
+  // Hash the newly uploaded file synchronously
+  const newFileBuf = fs.readFileSync(file.path);
+  const fileHash = crypto.createHash('sha256').update(newFileBuf).digest('hex');
+  // Read uploads directory and check each existing file
+  let files;
+  try {
+    files = fs.readdirSync(uploadsDir);
+  } catch (err) {
+    return file; // If we can't read the dir, just keep the new file
+  }
+  for (const f of files) {
+    if (f === file.filename) continue;
+    const otherPath = path.join(uploadsDir, f);
+    try {
+      const otherBuf = fs.readFileSync(otherPath);
+      const otherHash = crypto.createHash('sha256').update(otherBuf).digest('hex');
+      if (otherHash === fileHash) {
+        // Delete the newly uploaded duplicate, reuse the existing file
+        fs.unlinkSync(file.path);
+        file.filename = f;
+        file.path = otherPath;
+        break;
+      }
+    } catch (err) {
+      // Skip files that can't be read
+    }
+  }
+  return file;
 }
 
-// Dedup multiple files in parallel
+// Dedup multiple files sequentially
 function dedupUploadedFiles(files) {
-  if (!files || files.length === 0) return Promise.resolve([]);
-  return Promise.all(files.map(f => dedupUploadedFile(f)));
+  if (!files || files.length === 0) return [];
+  return files.map(f => dedupUploadedFile(f));
 }
 
 // Check if a photo file is referenced by any other equipment_photos, equipment.photo_path, or maintenance_photos rows
@@ -188,21 +194,32 @@ const EQUIPMENT_LIST_QUERY = `SELECT e.*,
 
 // EQUIPMENT
 router.get('/', (req, res) => {
-  getAllowedLocationIds(req, (err, allowedLocationIds) => {
+  getAllowedFilters(req, (err, allowedLocationIds, allowedOwnerIds) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
     }
     let query = `${EQUIPMENT_LIST_QUERY} ORDER BY e.name`;
     let params = [];
+    const conditions = [];
     if (allowedLocationIds !== null) {
       if (allowedLocationIds.length === 0) {
         // No locations allowed - return empty
         return res.json([]);
       }
-      const placeholders = allowedLocationIds.map(() => '?').join(',');
-      query = `${EQUIPMENT_LIST_QUERY} WHERE e.location_id IN (${placeholders}) ORDER BY e.name`;
-      params = allowedLocationIds;
+      conditions.push(`e.location_id IN (${allowedLocationIds.map(() => '?').join(',')})`);
+      params.push(...allowedLocationIds);
+    }
+    if (allowedOwnerIds !== null) {
+      if (allowedOwnerIds.length === 0) {
+        // No owners allowed - return empty
+        return res.json([]);
+      }
+      conditions.push(`e.owner_id IN (${allowedOwnerIds.map(() => '?').join(',')})`);
+      params.push(...allowedOwnerIds);
+    }
+    if (conditions.length > 0) {
+      query = `${EQUIPMENT_LIST_QUERY} WHERE ${conditions.join(' AND ')} ORDER BY e.name`;
     }
   db.all(query, params, (err, rows) => {
     if (err) {
@@ -1470,20 +1487,30 @@ router.get('/export-csv', (req, res) => {
   const { search, status, country, location, sublocation, owner, assignedTo } = req.query;
   const searchLower = search ? String(search).toLowerCase() : '';
 
-  getAllowedLocationIds(req, (err, allowedLocationIds) => {
+  getAllowedFilters(req, (err, allowedLocationIds, allowedOwnerIds) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
     }
     let query = `${EQUIPMENT_LIST_QUERY} ORDER BY e.id`;
     let params = [];
+    const conditions = [];
     if (allowedLocationIds !== null) {
       if (allowedLocationIds.length === 0) {
         return res.json([]);
       }
-      const placeholders = allowedLocationIds.map(() => '?').join(',');
-      query = `${EQUIPMENT_LIST_QUERY} WHERE e.location_id IN (${placeholders}) ORDER BY e.id`;
-      params = allowedLocationIds;
+      conditions.push(`e.location_id IN (${allowedLocationIds.map(() => '?').join(',')})`);
+      params.push(...allowedLocationIds);
+    }
+    if (allowedOwnerIds !== null) {
+      if (allowedOwnerIds.length === 0) {
+        return res.json([]);
+      }
+      conditions.push(`e.owner_id IN (${allowedOwnerIds.map(() => '?').join(',')})`);
+      params.push(...allowedOwnerIds);
+    }
+    if (conditions.length > 0) {
+      query = `${EQUIPMENT_LIST_QUERY} WHERE ${conditions.join(' AND ')} ORDER BY e.id`;
     }
   db.all(query, params, (err, rows) => {
     if (err) {
@@ -1950,19 +1977,52 @@ router.post('/maintenance-logs/:id/photos', upload.array('photos', 20), async (r
     return res.status(400).json({ error: 'No photos uploaded' });
   }
   try {
-    await dedupUploadedFiles(req.files);
+    dedupUploadedFiles(req.files);
   } catch (err) {
+    console.error('[MAINT PHOTOS] Dedup error:', err.message);
     return res.status(500).json({ error: 'File dedup error: ' + err.message });
   }
-  const stmt = db.prepare('INSERT INTO maintenance_photos (maintenance_log_id, photo_path) VALUES (?, ?)');
   const saved = [];
-  req.files.forEach(file => {
+  let completed = 0;
+  let hasError = false;
+  req.files.forEach((file) => {
     const photoPath = `/uploads/${file.filename}`;
-    stmt.run([maintenanceLogId, photoPath]);
-    saved.push({ id: file.filename, photo_path: photoPath });
+    db.run('INSERT INTO maintenance_photos (maintenance_log_id, photo_path) VALUES (?, ?)',
+      [maintenanceLogId, photoPath],
+      function(err) {
+        completed++;
+        if (err) {
+          console.error('[MAINT PHOTOS] DB insert error for', photoPath + ':', err.message);
+          if (!hasError) {
+            hasError = true;
+            return res.status(500).json({ error: 'DB insert error: ' + err.message });
+          }
+          return;
+        }
+        saved.push({ id: file.filename, photo_path: photoPath });
+        if (completed === req.files.length && !hasError) {
+          res.json({ saved });
+        }
+      }
+    );
   });
-  stmt.finalize();
-  res.json({ saved });
+});
+
+router.delete('/maintenance-logs/:id/photos/:photoId', (req, res) => {
+  db.get('SELECT photo_path FROM maintenance_photos WHERE id = ? AND maintenance_log_id = ?', [req.params.photoId, req.params.id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Photo not found' });
+    db.run('DELETE FROM maintenance_photos WHERE id = ?', [req.params.photoId], (err2) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+      isPhotoReferencedElsewhere(row.photo_path, req.params.photoId, (err3, refCount) => {
+        if (!err3 && refCount === 0) {
+          const filePath = path.join(__dirname, '..', row.photo_path);
+          fs.unlink(filePath, () => {});
+        }
+        res.json({ message: 'Photo deleted' });
+      });
+    });
+  });
 });
 
 router.post('/maintenance-logs', requireModulePermission('maintenance', 'add'), (req, res) => {
@@ -3070,7 +3130,7 @@ function getWriteOffPhotos(writeOffIds, callback) {
 }
 
 router.get('/write-offs', (req, res) => {
-  getAllowedLocationIds(req, (err, allowedLocationIds) => {
+  getAllowedFilters(req, (err, allowedLocationIds, allowedOwnerIds) => {
     if (err) { res.status(500).json({ error: err.message }); return; }
     let query = `SELECT wo.*,
             e.auto_serial_number as equipment_auto_serial,
@@ -3103,12 +3163,18 @@ router.get('/write-offs', (req, res) => {
           LEFT JOIN business_types bt ON bt.id = bta.business_type_id
           LEFT JOIN countries c ON c.id = lt.country_id`;
     let params = [];
+    const conditions = [];
     if (allowedLocationIds !== null) {
       if (allowedLocationIds.length === 0) return res.json([]);
-      const placeholders = allowedLocationIds.map(() => '?').join(',');
-      query += ` WHERE e.location_id IN (${placeholders})`;
-      params = allowedLocationIds;
+      conditions.push(`e.location_id IN (${allowedLocationIds.map(() => '?').join(',')})`);
+      params.push(...allowedLocationIds);
     }
+    if (allowedOwnerIds !== null) {
+      if (allowedOwnerIds.length === 0) return res.json([]);
+      conditions.push(`e.owner_id IN (${allowedOwnerIds.map(() => '?').join(',')})`);
+      params.push(...allowedOwnerIds);
+    }
+    if (conditions.length > 0) query += ` WHERE ${conditions.join(' AND ')}`;
     query += ` ORDER BY wo.created_at DESC`;
   db.all(query, params, (err, rows) => {
     if (err) {
@@ -3308,7 +3374,7 @@ router.post('/write-offs/:id/reject', (req, res) => {
 
 // Equipment Returns API endpoints
 router.get('/returns', (req, res) => {
-  getAllowedLocationIds(req, (err, allowedLocationIds) => {
+  getAllowedFilters(req, (err, allowedLocationIds, allowedOwnerIds) => {
     if (err) { res.status(500).json({ error: err.message }); return; }
     let query = `SELECT er.*,
             e.auto_serial_number as equipment_auto_serial,
@@ -3341,12 +3407,18 @@ router.get('/returns', (req, res) => {
           LEFT JOIN business_types bt ON bt.id = bta.business_type_id
           LEFT JOIN countries c ON c.id = lt.country_id`;
     let params = [];
+    const conditions = [];
     if (allowedLocationIds !== null) {
       if (allowedLocationIds.length === 0) return res.json([]);
-      const placeholders = allowedLocationIds.map(() => '?').join(',');
-      query += ` WHERE e.location_id IN (${placeholders})`;
-      params = allowedLocationIds;
+      conditions.push(`e.location_id IN (${allowedLocationIds.map(() => '?').join(',')})`);
+      params.push(...allowedLocationIds);
     }
+    if (allowedOwnerIds !== null) {
+      if (allowedOwnerIds.length === 0) return res.json([]);
+      conditions.push(`e.owner_id IN (${allowedOwnerIds.map(() => '?').join(',')})`);
+      params.push(...allowedOwnerIds);
+    }
+    if (conditions.length > 0) query += ` WHERE ${conditions.join(' AND ')}`;
     query += ` ORDER BY er.created_at DESC`;
   db.all(query, params, (err, rows) => {
     if (err) {

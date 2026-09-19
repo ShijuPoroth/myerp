@@ -3895,6 +3895,7 @@ async function renderAccessControl() {
 
         // Fetch location filters for equipment managers
         let locationFilterHtml = '';
+        let ownerFilterHtml = '';
         let columnVisibilityHtml = '';
         if (manager.module_name === 'equipment') {
             let allowedIds = [];
@@ -3920,6 +3921,30 @@ async function renderAccessControl() {
                         </div>
                     </div>
                     <div class="max-h-32 overflow-y-auto grid grid-cols-2 gap-x-3">${btaRows || '<span class="text-xs text-gray-400">No locations available</span>'}</div>
+                </div>`;
+
+            let allowedOwnerIds = [];
+            try { allowedOwnerIds = await loadManagerOwnerFilters(manager.id); } catch(e) {}
+            let ownerRows = '';
+            try {
+                const ownerRes = await fetch(`${API_BASE}/equipment/owners`);
+                const ownerList = await ownerRes.json();
+                ownerList.forEach(o => {
+                    const checked = allowedOwnerIds.includes(o.id) ? 'checked' : '';
+                    ownerRows += `<label class="flex items-center gap-1.5 text-xs text-gray-600 py-0.5"><input type="checkbox" name="owner-filter-${manager.id}" value="${o.id}" ${checked}> ${o.name}</label>`;
+                });
+            } catch(e) {}
+            ownerFilterHtml = `
+                <div class="px-3 py-2 border-t bg-gray-50">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-semibold text-gray-600">Allowed Owners (empty = all)</span>
+                        <div class="flex gap-1">
+                            <button onclick="toggleAllOwnerFilters(${manager.id}, true)" class="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded hover:bg-gray-300">Select All</button>
+                            <button onclick="toggleAllOwnerFilters(${manager.id}, false)" class="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded hover:bg-gray-300">Clear</button>
+                            <button onclick="saveManagerOwnerFilters(${manager.id})" class="bg-blue-600 text-white text-xs px-2 py-0.5 rounded hover:bg-blue-700">Save Owners</button>
+                        </div>
+                    </div>
+                    <div class="max-h-32 overflow-y-auto grid grid-cols-2 gap-x-3">${ownerRows || '<span class="text-xs text-gray-400">No owners available</span>'}</div>
                 </div>`;
         }
 
@@ -4025,6 +4050,7 @@ async function renderAccessControl() {
                 <button onclick="saveAllPermissions(${manager.id}, '${manager.module_name}')" class="bg-green-600 text-white text-xs px-3 py-1 rounded hover:bg-green-700">Save All Permissions</button>
             </div>
             ${locationFilterHtml}
+            ${ownerFilterHtml}
             ${columnVisibilityHtml}`;
 
         grid.appendChild(card);
@@ -4338,6 +4364,42 @@ async function saveManagerLocationFilters(managerId) {
 
 function toggleAllLocationFilters(managerId, checked) {
     document.querySelectorAll(`input[name="loc-filter-${managerId}"]`).forEach(cb => { cb.checked = checked; });
+}
+
+// ---- Owner Filters for Equipment Managers ----
+async function loadManagerOwnerFilters(managerId) {
+    try {
+        const res = await fetch(`${API_BASE}/module-managers/${managerId}/owner-filters`);
+        return await res.json();
+    } catch (e) {
+        console.error('Error loading owner filters:', e);
+        return [];
+    }
+}
+
+async function saveManagerOwnerFilters(managerId) {
+    const checkboxes = document.querySelectorAll(`input[name="owner-filter-${managerId}"]:checked`);
+    const owner_ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    try {
+        const response = await fetch(`${API_BASE}/module-managers/${managerId}/owner-filters`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner_ids })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            alert('Owner filters saved.');
+        } else {
+            alert('Error: ' + (data.error || 'Could not save owner filters.'));
+        }
+    } catch (error) {
+        console.error('Error saving owner filters:', error);
+        alert('Error saving owner filters.');
+    }
+}
+
+function toggleAllOwnerFilters(managerId, checked) {
+    document.querySelectorAll(`input[name="owner-filter-${managerId}"]`).forEach(cb => { cb.checked = checked; });
 }
 
 // COLUMN VISIBILITY (access control)

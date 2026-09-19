@@ -21,6 +21,7 @@ const supplierRoutes = require('./routes/suppliers');
 const procurementRoutes = require('./routes/procurement');
 const authRoutes = require('./routes/auth');
 const cateringRoutes = require('./routes/catering');
+const warehouseManagementRoutes = require('./routes/warehouse-management');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -176,6 +177,18 @@ if (!fs.existsSync('uploads')) {
   fs.mkdirSync('uploads');
 }
 
+// Multer error handler - must be before routes
+app.use((err, req, res, next) => {
+  if (err && err.code === 'LIMIT_FILE_SIZE') {
+    console.error('[UPLOAD ERROR] File too large:', err.message);
+    return res.status(400).json({ error: 'File too large. Maximum 15MB per file.' });
+  }
+  if (err && err.message && err.message.includes('Only image files')) {
+    return res.status(400).json({ error: err.message });
+  }
+  next(err);
+});
+
 // Mount route modules
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api', hrRoutes);
@@ -184,6 +197,7 @@ app.use('/api', warehouseRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api', procurementRoutes);
 app.use('/api/catering', cateringRoutes);
+app.use('/api/warehouse-management', warehouseManagementRoutes);
 
 app.listen(PORT, HOST, () => {
   console.log(`Server running on http://${HOST}:${PORT}`);

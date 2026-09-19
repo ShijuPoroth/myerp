@@ -2,7 +2,7 @@
 
 function showSection(section) {
     // Hide all sections by explicit IDs
-    var sectionIds = ['dashboard', 'equipment-dashboard', 'hr-dashboard', 'equipment', 'hr', 'admin', 'audit', 'authorizer', 'catering'];
+    var sectionIds = ['dashboard', 'equipment-dashboard', 'hr-dashboard', 'equipment', 'hr', 'admin', 'audit', 'authorizer', 'catering', 'warehouse'];
     sectionIds.forEach(function(id) {
         var s = document.getElementById(id + '-section');
         if (s) s.style.display = 'none';
@@ -11,7 +11,7 @@ function showSection(section) {
     // Show selected section — use flex so column layout is preserved
     var el = document.getElementById(section + '-section');
     if (el) {
-        const flexSections = ['hr', 'admin', 'equipment', 'catering'];
+        const flexSections = ['hr', 'admin', 'equipment', 'catering', 'warehouse'];
         el.style.display = flexSections.includes(section) ? 'flex' : 'block';
     }
     
@@ -30,7 +30,8 @@ function showSection(section) {
         audit: 'Audit Log',
         admin: 'Admin Settings',
         authorizer: 'Authorizer',
-        catering: 'Catering Management'
+        catering: 'Catering Management',
+        warehouse: 'Warehouse Management'
     };
     document.getElementById('page-title').textContent = titles[section];
 
@@ -73,6 +74,11 @@ function showSection(section) {
     } else if (section === 'catering') {
         showCateringSubTab('recipes');
         loadCateringData();
+        if (typeof updateTransferNotificationBadge === 'function') updateTransferNotificationBadge();
+        setTimeout(adjustTableContainerHeights, 150);
+    } else if (section === 'warehouse') {
+        showWarehouseSubTab('items');
+        loadWarehouseData();
         setTimeout(adjustTableContainerHeights, 150);
     } else if (section === 'audit') {
         loadAuditLogs();

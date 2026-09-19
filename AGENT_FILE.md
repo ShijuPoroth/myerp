@@ -1,7 +1,7 @@
 # MWH Management ERP — Agent Reference File
 
 > **Purpose:** Complete structural backup of the app. Use this to recover context without reading the entire codebase.
-> **Last Updated:** 2026-09-12
+> **Last Updated:** 2026-09-14
 
 ---
 
@@ -72,6 +72,7 @@ MWH Management/
 │   ├── hr.js                  # Employees, uniforms, accommodation, payments, attendance, leave, settings
 │   ├── admin.js               # Countries, locations, business types, audit logs, module managers, items, PM tasks
 │   ├── warehouse.js           # Kitchen items, purchases, deliveries, locations
+│   ├── warehouse-management.js # Warehouse management UI (business units, stock, transfers)
 │   ├── suppliers.js           # Suppliers CRUD, supplier assignments
 │   ├── procurement.js         # Purchase orders
 │   └── catering.js            # Recipes, menus, ingredients, sales, deployments
@@ -145,6 +146,7 @@ MWH Management/
 │       │   └── admin-settings-hr-employee-id-prefix.js # Employee ID prefix setting
 │       └── catering/
 │           └── catering.js     # Catering module (recipes, menus, ingredients, sales, deployments)
+│       ├── warehouse-management.js # Warehouse management UI (business units, stock, transfers)
 └── uploads/                   # User-uploaded files (equipment photos, employee photos, documents)
 ```
 
@@ -395,6 +397,7 @@ Single-page application with all sections in one HTML file (~297KB). Sections ar
 - `GET/POST /maintenance-logs` — Maintenance logs
 - `PUT/DELETE /maintenance-logs/:id` — Update/delete maintenance
 - `GET/POST /maintenance-logs/:id/photos` — Maintenance photos
+- `DELETE /maintenance-logs/:id/photos/:photoId` — Delete maintenance photo
 - `GET/POST /maintenance-logs/:id/tasks` — Maintenance tasks
 - `GET/POST/PUT/DELETE /spare-parts` — Spare parts CRUD
 - `POST /spare-parts/:id/purchase` — Spare part purchase
@@ -655,23 +658,66 @@ Single-page application with all sections in one HTML file (~297KB). Sections ar
 - **Files:** `public/js/equipment/equipment-core.js`
 - **Date:** 2026-08-26
 
+### Maintenance Photo Upload — Multiple Photos Not Saving (Fixed)
+- **Issue:** Multiple photos uploaded via the "Add Maintenance Log" form were not saved, while a single photo worked fine.
+- **Root Cause 1:** `dedupUploadedFiles` processed files in parallel (`Promise.all`), causing Node.js thread pool exhaustion when each file's dedup read the entire `uploads/` directory concurrently (358+ files).
+- **Root Cause 2:** Some uploaded photos exceeded Multer's 5MB `fileSize` limit, causing `MulterError: File too large` which silently failed the entire request.
+- **Fix 1:** Rewrote `dedupUploadedFile` to use synchronous `fs.readFileSync` for hashing, eliminating concurrent stream issues. Simplified `dedupUploadedFiles` to use `.map()`.
+- **Fix 2:** Increased Multer `fileSize` limit from 5MB to 15MB in `routes/equipment.js`.
+- **Fix 3:** Refactored DB inserts in `POST /maintenance-logs/:id/photos` to use `db.run()` with callbacks, ensuring all inserts complete before responding.
+- **Fix 4:** Added a global Multer error handler in `server.js` to return JSON errors for `LIMIT_FILE_SIZE` and file type issues.
+- **Files:** `routes/equipment.js`, `server.js`
+- **Date:** 2026-09-13
+
+### Maintenance Photo Upload — User-Friendly Error Messages (Enhancement)
+- **Issue:** When photo uploads failed, errors were only logged to console — the user saw "saving" but no indication of failure.
+- **Fix:** Updated `uploadMaintenancePhotos()` in `equipment-maintenance.js` to show user-visible `alert()` messages on failure, explaining possible reasons (file too large, not an image, server error).
+- **Files:** `public/js/equipment/equipment-maintenance.js`
+- **Date:** 2026-09-13
+
+### Maintenance Parts Used Disappearing in Edit Form (Fixed)
+- **Issue:** When opening the "Edit Maintenance Log" form, the "Parts Used" values (selected part names) disappeared — the dropdown buttons showed "Select Part" instead of the previously saved part.
+- **Root Cause:** In `populateMaintenancePartsRows()`, the hidden input `value` was set to empty (`""`) in the row HTML, then `populateMaintenancePartsDropdown()` was called (which checks `hiddenInput.value` to update the button display text), and only *after* that was the actual `spare_part_id` set on the hidden input. So the button text never updated.
+- **Fix:** Set `value`, `data-cost`, and `data-quantity` directly in the row HTML **before** calling `populateMaintenancePartsDropdown()`, so `populateMaintenancePartOptions()` sees the correct value and updates the button text to show the part name and photo.
+- **Files:** `public/js/equipment/equipment-maintenance.js`
+- **Date:** 2026-09-13
+
+### Maintenance Photo Delete in Edit Form (Enhancement)
+- **Issue:** When editing a maintenance log, there was no way to delete existing photos.
+- **Fix:** Added `DELETE /maintenance-logs/:id/photos/:photoId` endpoint in `routes/equipment.js` (following the same pattern as equipment photo deletion with `isPhotoReferencedElsewhere` check). Updated `loadMaintenancePhotosForEdit()` in `equipment-maintenance.js` to render each photo with a red X delete button overlay (visible on hover). Added `deleteMaintenancePhoto()` function that calls the API, removes the photo element from DOM, and shows "No photos yet" if all are deleted.
+- **Files:** `routes/equipment.js`, `public/js/equipment/equipment-maintenance.js`
+- **Date:** 2026-09-13
+
+### Maintenance Log Print — Text Too Small (In Progress)
+- **Issue:** When printing or saving maintenance log details as PDF, text content was too small to read while photos appeared large.
+ **Changes made so far:**
+  1. Increased all font sizes in the print HTML template (body 11px→14px, labels 11px→13px, section titles 11px→14px, table headers/cells 11px→13px, etc.).
+  2. Changed `@page size: auto` to `@page size: A4 portrait`.
+  3. Changed `.page max-width: 800px` to `width: 100%; max-width: none`.
+  4. Replaced iframe-based printing with `window.open()` approach for more reliable print scaling.
+  5. Bumped cache-busting version to `?v=43`.
+- **Status:** User reports issue still persists — further debugging needed.
+- **Files:** `public/js/equipment/equipment-maintenance.js`, `public/index.html`
+- **Date:** 2026-09-14
+
 ---
 
 ## 11. Cache Busting
 
 All JS files in `public/index.html` are loaded with `?v=N` query parameters. When modifying any JS file, bump the version number in `index.html` to force browser cache invalidation.
 
-Current versions (as of 2026-09-12):
-- `equipment-core.js?v=110`
-- `uniforms.js?v=44`
-- `employees.js?v=90`
-- `admin-settings.js?v=58`
-- `navigation.js?v=51`
+Current versions (as of 2026-09-14):
+- `equipment-core.js?v=123`
+- `equipment-maintenance.js?v=43`
+- `uniforms.js?v=45`
+- `employees.js?v=93`
+- `admin-settings.js?v=68`
+- `navigation.js?v=54`
 - `dashboard.js?v=53`
-- `utils.js?v=35`
+- `utils.js?v=36`
 - `loader.js?v=35` (loads `modals.html?v=34`)
 - `hr-accommodation-rooms.js?v=9`
-- `hr-accommodation-room-assignments.js?v=49`
+- `hr-accommodation-room-assignments.js?v=50`
 - Other files: see `public/index.html` script tags
 
 ---
@@ -722,7 +768,7 @@ start-app.bat
 - Equipment: photos, manuals, documents (`upload.fields`)
 - Employees: photos (`upload.single('photo')`)
 - Employee documents: up to 20 files (`upload.array('documents', 20)`)
-- Maintenance photos: up to 20 (`upload.array('photos', 20)`)
+- Maintenance photos: up to 20 (`upload.array('photos', 20)`, 15MB max per file)
 - Write-off photos: up to 10 (`upload.array('photos', 10)`)
 - Signed payslips: stored in `public/signed-payslips/`
 - Company logos: stored in `public/company-logo/`

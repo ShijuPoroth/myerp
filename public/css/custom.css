@@ -76,6 +76,11 @@ html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
 .catering-sub-tab-content:not(.hidden) { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding-top: 12px; }
 .catering-sub-tab-content:not(.hidden) > .flex { flex-shrink: 0; }
 .catering-sub-tab-content:not(.hidden) > .table-scroll-container { flex: 1; min-height: 0; overflow-x: auto; overflow-y: auto; max-height: none !important; }
+#warehouse-section { height: 100%; overflow: hidden; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; }
+#warehouse-section > .flex { flex-shrink: 0; flex-wrap: wrap; }
+.warehouse-sub-tab-content:not(.hidden) { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding-top: 12px; }
+.warehouse-sub-tab-content:not(.hidden) > .flex { flex-shrink: 0; }
+.warehouse-sub-tab-content:not(.hidden) > .bg-white { flex: 1; min-height: 0; overflow-x: auto; overflow-y: auto; max-height: none !important; }
 .hr-tab-content:not(.hidden) > .flex { flex-shrink: 0; flex-wrap: wrap; }
 .payment-tab-content:not(.hidden) { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
 .payment-tab-content:not(.hidden) > .flex { flex-shrink: 0; }

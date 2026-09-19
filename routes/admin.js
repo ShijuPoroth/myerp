@@ -1233,6 +1233,47 @@ router.put('/module-managers/:id/location-filters', requireAdmin, (req, res) => 
   });
 });
 
+// MANAGER OWNER FILTERS (for equipment managers)
+// Get allowed owner IDs for a manager
+router.get('/module-managers/:id/owner-filters', requireAdmin, (req, res) => {
+  db.all('SELECT owner_id FROM module_manager_owner_filters WHERE module_manager_id = ?', [req.params.id], (err, rows) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json(rows.map(r => r.owner_id));
+  });
+});
+
+// Set allowed owner IDs for a manager (replaces all)
+router.put('/module-managers/:id/owner-filters', requireAdmin, (req, res) => {
+  const { owner_ids } = req.body;
+  if (!Array.isArray(owner_ids)) {
+    res.status(400).json({ error: 'owner_ids must be an array.' });
+    return;
+  }
+  const managerId = req.params.id;
+  db.run('DELETE FROM module_manager_owner_filters WHERE module_manager_id = ?', [managerId], function(err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    if (owner_ids.length === 0) {
+      res.json({ message: 'Owner filters cleared.' });
+      return;
+    }
+    const placeholders = owner_ids.map(() => '(?, ?)').join(',');
+    const values = owner_ids.flatMap(id => [managerId, id]);
+    db.run(`INSERT INTO module_manager_owner_filters (module_manager_id, owner_id) VALUES ${placeholders}`, values, function(err) {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+      res.json({ message: 'Owner filters updated.' });
+    });
+  });
+});
+
 // PREVENTIVE MAINTENANCE TASKS
 
 // COLUMN VISIBILITY PERMISSIONS

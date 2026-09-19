@@ -70,6 +70,14 @@ return;
         loadCateringEmployees();
     } else if (tab === 'deployments') {
         loadDeployments();
+    } else if (tab === 'transfers') {
+        loadPendingTransfers();
+    } else if (tab === 'business-unit-stock') {
+        loadBusinessUnitStock();
+    } else if (tab === 'business-unit-sales') {
+        loadBusinessUnitSales();
+    } else if (tab === 'business-unit-consumption') {
+        loadBusinessUnitConsumption();
     }
 }
 
@@ -109,6 +117,16 @@ window.deleteIngredient = deleteIngredient;
 window.deleteSale = deleteSale;
 window.completeDeployment = completeDeployment;
 window.deleteDeployment = deleteDeployment;
+window.viewTransferDetails = viewTransferDetails;
+window.acceptTransfer = acceptTransfer;
+window.rejectTransfer = rejectTransfer;
+window.openDistributeStockModal = openDistributeStockModal;
+window.closeDistributeStockModal = closeDistributeStockModal;
+window.openBusinessUnitSaleModal = openBusinessUnitSaleModal;
+window.closeBusinessUnitSaleModal = closeBusinessUnitSaleModal;
+window.addBusSaleItemRow = addBusSaleItemRow;
+window.deleteBusinessUnitSale = deleteBusinessUnitSale;
+window.filterBusinessUnitSales = filterBusinessUnitSales;
 
 // Load all catering data
 async function loadCateringData() {
@@ -1418,5 +1436,403 @@ async function deleteDeployment(id) {
         } catch (error) {
             console.error('Error deleting deployment:', error);
         }
+    }
+}
+
+// ─── Warehouse Transfers (Catering side) ───
+let allPendingTransfers = [];
+let allBusinessUnitStock = [];
+let allBusinessUnitSales = [];
+let allCateringBusinessUnits = [];
+
+async function loadPendingTransfers() {
+    showTableLoading('catering-transfers-table-body', 'Loading transfers...');
+    try {
+        const response = await fetch(`${API_BASE}/catering/pending-transfers`);
+        if (response.ok) {
+            allPendingTransfers = await response.json();
+            renderPendingTransfers();
+        }
+    } catch (error) {
+        console.error('Error loading pending transfers:', error);
+    }
+}
+
+function renderPendingTransfers() {
+    const tbody = document.getElementById('catering-transfers-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = allPendingTransfers.map(t => `
+        <tr>
+            <td class="px-4 py-2">${t.transfer_number}</td>
+            <td class="px-4 py-2">${t.transfer_date}</td>
+            <td class="px-4 py-2">${t.pending_item_count || 0}</td>
+            <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800">${t.status}</span></td>
+            <td class="px-4 py-2">${t.notes || '-'}</td>
+            <td class="px-4 py-2">
+                <button onclick="viewTransferDetails(${t.id})" class="text-green-600 hover:text-green-800 mr-2" title="Review & Accept"><i class="fas fa-check-circle"></i></button>
+            </td>
+        </tr>
+    `).join('') || '<tr><td colspan="6" class="px-4 py-2 text-center text-gray-500">No pending transfers</td></tr>';
+}
+
+async function viewTransferDetails(id) {
+    try {
+        const response = await fetch(`${API_BASE}/catering/transfers/${id}`);
+        if (response.ok) {
+            const t = await response.json();
+            const modal = document.getElementById('catering-transfer-review-modal');
+            const title = document.getElementById('catering-transfer-review-title');
+            const body = document.getElementById('catering-transfer-review-body');
+            title.textContent = `Review Transfer: ${t.transfer_number}`;
+            body.innerHTML = `
+                <div class="mb-4 space-y-1">
+                    <p><strong>Date:</strong> ${t.transfer_date}</p>
+                    <p><strong>Status:</strong> ${t.status}</p>
+                    <p><strong>Notes:</strong> ${t.notes || '-'}</p>
+                </div>
+                <table class="w-full text-sm border rounded">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Item</th>
+                            <th class="px-3 py-2 text-left">Sent Qty</th>
+                            <th class="px-3 py-2 text-left">Unit</th>
+                            <th class="px-3 py-2 text-left">Received Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${(t.items || []).map(i => `
+                            <tr class="border-t">
+                                <td class="px-3 py-2">${i.item_name || i.ingredient_name || '-'}</td>
+                                <td class="px-3 py-2">${i.sent_quantity}</td>
+                                <td class="px-3 py-2">${i.unit || i.item_unit || '-'}</td>
+                                <td class="px-3 py-2">
+                                    <input type="number" step="0.01" class="transfer-received-qty w-24 px-2 py-1 border rounded text-sm" data-item-id="${i.id}" value="${i.sent_quantity}" max="${i.sent_quantity}">
+                                </td>
+                            </tr>
+                        `).join('') || '<tr><td colspan="4" class="px-3 py-2 text-center text-gray-500">No items</td></tr>'}
+                    </tbody>
+                </table>
+                <div class="flex gap-3 mt-4">
+                    <button onclick="acceptTransfer(${t.id})" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"><i class="fas fa-check mr-1"></i>Accept Transfer</button>
+                    <button onclick="rejectTransfer(${t.id})" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"><i class="fas fa-times mr-1"></i>Reject</button>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+    } catch (error) {
+        console.error('Error viewing transfer:', error);
+    }
+}
+
+async function acceptTransfer(id) {
+    const items = [];
+    document.querySelectorAll('#catering-transfer-review-body .transfer-received-qty').forEach(input => {
+        items.push({ item_id: parseInt(input.dataset.itemId), received_quantity: parseFloat(input.value) || 0 });
+    });
+    if (items.length === 0) { alert('No items to accept'); return; }
+    try {
+        const response = await fetch(`${API_BASE}/catering/transfers/${id}/accept`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items })
+        });
+        if (response.ok) {
+            const modal = document.getElementById('catering-transfer-review-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            loadPendingTransfers();
+            loadIngredients();
+            updateTransferNotificationBadge();
+        } else {
+            const err = await response.json();
+            alert(err.error || 'Error accepting transfer');
+        }
+    } catch (error) {
+        console.error('Error accepting transfer:', error);
+        alert('Error accepting transfer');
+    }
+}
+
+async function rejectTransfer(id) {
+    const reason = prompt('Reason for rejection?');
+    if (reason === null) return;
+    try {
+        const response = await fetch(`${API_BASE}/catering/transfers/${id}/reject`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason })
+        });
+        if (response.ok) {
+            const modal = document.getElementById('catering-transfer-review-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            loadPendingTransfers();
+            updateTransferNotificationBadge();
+        } else {
+            const err = await response.json();
+            alert(err.error || 'Error rejecting transfer');
+        }
+    } catch (error) {
+        console.error('Error rejecting transfer:', error);
+    }
+}
+
+async function updateTransferNotificationBadge() {
+    try {
+        const response = await fetch(`${API_BASE}/catering/pending-transfers`);
+        if (response.ok) {
+            const transfers = await response.json();
+            const badge = document.getElementById('catering-transfer-badge');
+            if (badge) {
+                if (transfers.length > 0) {
+                    badge.textContent = transfers.length;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error updating transfer badge:', error);
+    }
+}
+
+// ─── Business Unit Stock ───
+async function loadBusinessUnitStock() {
+    showTableLoading('catering-bus-stock-table-body', 'Loading business unit stock...');
+    try {
+        const [stockRes, busRes] = await Promise.all([
+            fetch(`${API_BASE}/catering/business-unit-stock`),
+            fetch(`${API_BASE}/warehouse-management/business-units`)
+        ]);
+        if (stockRes.ok) allBusinessUnitStock = await stockRes.json();
+        if (busRes.ok) allCateringBusinessUnits = await busRes.json();
+        renderBusinessUnitStock();
+    } catch (error) {
+        console.error('Error loading business unit stock:', error);
+    }
+}
+
+function renderBusinessUnitStock() {
+    const tbody = document.getElementById('catering-bus-stock-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = allBusinessUnitStock.map(s => {
+        const unitName = [s.country_name, s.location_name, s.sub_location_name, s.business_type_name].filter(Boolean).join(' - ');
+        return `
+        <tr>
+            <td class="px-4 py-2">${s.ingredient_name || '-'}</td>
+            <td class="px-4 py-2">${s.unit || '-'}</td>
+            <td class="px-4 py-2">${unitName || s.business_unit_code || '-'}</td>
+            <td class="px-4 py-2 ${s.quantity <= 0 ? 'text-red-600 font-semibold' : ''}">${s.quantity}</td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="4" class="px-4 py-2 text-center text-gray-500">No stock distributed yet</td></tr>';
+}
+
+function openDistributeStockModal() {
+    const modal = document.getElementById('catering-distribute-stock-modal');
+    const form = document.getElementById('catering-distribute-stock-form');
+    form.reset();
+    // Populate ingredient dropdown
+    const ingSelect = document.getElementById('distribute-ingredient');
+    ingSelect.innerHTML = '<option value="">Select Ingredient</option>' +
+        allIngredients.map(i => `<option value="${i.id}" data-stock="${i.current_stock}">${i.name} (Stock: ${i.current_stock} ${i.unit})</option>`).join('');
+    // Populate business unit dropdown
+    const busSelect = document.getElementById('distribute-business-unit');
+    busSelect.innerHTML = '<option value="">Select Business Unit</option>' +
+        allCateringBusinessUnits.map(b => {
+            const name = [b.country_name, b.location_name, b.sub_location_name, b.business_type_name].filter(Boolean).join(' - ');
+            return `<option value="${b.id}">${name || b.business_unit_code}</option>`;
+        }).join('');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeDistributeStockModal() {
+    const modal = document.getElementById('catering-distribute-stock-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+safeAddFormListener('catering-distribute-stock-form', async function(e) {
+    e.preventDefault();
+    const data = {
+        ingredient_id: parseInt(document.getElementById('distribute-ingredient').value),
+        business_type_assignment_id: parseInt(document.getElementById('distribute-business-unit').value),
+        quantity: parseFloat(document.getElementById('distribute-quantity').value)
+    };
+    if (!data.ingredient_id || !data.business_type_assignment_id || !data.quantity) {
+        alert('All fields are required'); return;
+    }
+    try {
+        const response = await fetch(`${API_BASE}/catering/business-unit-stock/distribute`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+        });
+        if (response.ok) {
+            closeDistributeStockModal();
+            loadBusinessUnitStock();
+            loadIngredients();
+        } else {
+            const err = await response.json();
+            alert(err.error || 'Error distributing stock');
+        }
+    } catch (error) {
+        console.error('Error distributing stock:', error);
+        alert('Error distributing stock');
+    }
+});
+
+// ─── Business Unit Sales ───
+let busSaleFilterUnit = '';
+
+async function loadBusinessUnitSales() {
+    showTableLoading('catering-bus-sales-table-body', 'Loading business unit sales...');
+    try {
+        let url = `${API_BASE}/catering/business-unit-sales`;
+        if (busSaleFilterUnit) url += `?business_type_assignment_id=${busSaleFilterUnit}`;
+        const response = await fetch(url);
+        if (response.ok) {
+            allBusinessUnitSales = await response.json();
+            renderBusinessUnitSales();
+        }
+    } catch (error) {
+        console.error('Error loading business unit sales:', error);
+    }
+}
+
+function renderBusinessUnitSales() {
+    const tbody = document.getElementById('catering-bus-sales-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = allBusinessUnitSales.map(s => {
+        const unitName = [s.country_name, s.location_name, s.sub_location_name, s.business_type_name].filter(Boolean).join(' - ');
+        return `
+        <tr>
+            <td class="px-4 py-2">${s.sale_date}</td>
+            <td class="px-4 py-2">${unitName || s.business_unit_code || '-'}</td>
+            <td class="px-4 py-2">${s.recipe_name || '-'}</td>
+            <td class="px-4 py-2">${s.quantity}</td>
+            <td class="px-4 py-2">${s.total_cost || 0}</td>
+            <td class="px-4 py-2">${s.notes || '-'}</td>
+            <td class="px-4 py-2">
+                <button onclick="deleteBusinessUnitSale(${s.id})" class="text-red-600 hover:text-red-800" title="Delete"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="7" class="px-4 py-2 text-center text-gray-500">No sales recorded</td></tr>';
+}
+
+function filterBusinessUnitSales() {
+    const select = document.getElementById('bus-sales-filter-unit');
+    busSaleFilterUnit = select ? select.value : '';
+    loadBusinessUnitSales();
+}
+
+function openBusinessUnitSaleModal() {
+    const modal = document.getElementById('catering-bus-sale-modal');
+    const form = document.getElementById('catering-bus-sale-form');
+    form.reset();
+    document.getElementById('catering-bus-sale-items-container').innerHTML = '';
+    // Populate business unit dropdown
+    const busSelect = document.getElementById('bus-sale-business-unit');
+    busSelect.innerHTML = '<option value="">Select Business Unit</option>' +
+        allCateringBusinessUnits.map(b => {
+            const name = [b.country_name, b.location_name, b.sub_location_name, b.business_type_name].filter(Boolean).join(' - ');
+            return `<option value="${b.id}">${name || b.business_unit_code}</option>`;
+        }).join('');
+    // Set default date
+    document.getElementById('bus-sale-date').value = new Date().toISOString().slice(0, 10);
+    addBusSaleItemRow();
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeBusinessUnitSaleModal() {
+    const modal = document.getElementById('catering-bus-sale-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function addBusSaleItemRow() {
+    const container = document.getElementById('catering-bus-sale-items-container');
+    const row = document.createElement('div');
+    row.className = 'flex gap-2 items-center';
+    row.innerHTML = `
+        <select class="bus-sale-recipe-select flex-1 px-2 py-1 border rounded text-sm">
+            <option value="">Select Recipe (optional)</option>
+            ${allRecipes.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
+        </select>
+        <input type="number" class="bus-sale-qty w-24 px-2 py-1 border rounded text-sm" placeholder="Qty" value="1">
+        <input type="number" step="0.01" class="bus-sale-cost w-24 px-2 py-1 border rounded text-sm" placeholder="Cost" value="0">
+        <input type="text" class="bus-sale-notes flex-1 px-2 py-1 border rounded text-sm" placeholder="Notes">
+        <button type="button" onclick="this.parentElement.remove()" class="text-red-600 hover:text-red-800"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(row);
+}
+
+safeAddFormListener('catering-bus-sale-form', async function(e) {
+    e.preventDefault();
+    const business_type_assignment_id = parseInt(document.getElementById('bus-sale-business-unit').value);
+    const sale_date = document.getElementById('bus-sale-date').value;
+    if (!business_type_assignment_id || !sale_date) { alert('Business unit and date are required'); return; }
+    const items = [];
+    document.querySelectorAll('#catering-bus-sale-items-container > div').forEach(row => {
+        const recipe_id = row.querySelector('.bus-sale-recipe-select').value;
+        const quantity = parseInt(row.querySelector('.bus-sale-qty').value);
+        const total_cost = parseFloat(row.querySelector('.bus-sale-cost').value) || 0;
+        const notes = row.querySelector('.bus-sale-notes').value;
+        if (quantity > 0) items.push({ recipe_id: recipe_id || null, quantity, total_cost, notes });
+    });
+    if (items.length === 0) { alert('Add at least one sale item'); return; }
+    try {
+        const response = await fetch(`${API_BASE}/catering/business-unit-sales`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ business_type_assignment_id, sale_date, items })
+        });
+        if (response.ok) {
+            closeBusinessUnitSaleModal();
+            loadBusinessUnitSales();
+            loadBusinessUnitStock();
+        } else {
+            const err = await response.json();
+            alert(err.error || 'Error recording sale');
+        }
+    } catch (error) {
+        console.error('Error recording sale:', error);
+        alert('Error recording sale');
+    }
+});
+
+async function deleteBusinessUnitSale(id) {
+    if (!confirm('Delete this sale? Stock will be restored.')) return;
+    try {
+        const response = await fetch(`${API_BASE}/catering/business-unit-sales/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            loadBusinessUnitSales();
+            loadBusinessUnitStock();
+        } else {
+            const err = await response.json();
+            alert(err.error || 'Error deleting sale');
+        }
+    } catch (error) {
+        console.error('Error deleting sale:', error);
+    }
+}
+
+// ─── Business Unit Consumption Summary ───
+async function loadBusinessUnitConsumption() {
+    showTableLoading('catering-bus-consumption-table-body', 'Loading consumption summary...');
+    try {
+        const response = await fetch(`${API_BASE}/catering/business-unit-consumption`);
+        if (response.ok) {
+            const rows = await response.json();
+            const tbody = document.getElementById('catering-bus-consumption-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = rows.map(r => {
+                const unitName = [r.country_name, r.location_name, r.sub_location_name, r.business_type_name].filter(Boolean).join(' - ');
+                return `
+                <tr>
+                    <td class="px-4 py-2">${unitName || r.business_unit_code || '-'}</td>
+                    <td class="px-4 py-2">${r.total_sales || 0}</td>
+                    <td class="px-4 py-2">${r.total_quantity_sold || 0}</td>
+                    <td class="px-4 py-2">${r.total_cost || 0}</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="4" class="px-4 py-2 text-center text-gray-500">No consumption data</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading consumption summary:', error);
     }
 }

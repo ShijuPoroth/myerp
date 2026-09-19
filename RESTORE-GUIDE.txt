@@ -1,0 +1,51 @@
+====================================
+MWH Management ERP - Restore Guide
+====================================
+
+After Windows reinstall, copy the entire folder back.
+
+STEP 1: Install Node.js
+-----------------------
+- Download from https://nodejs.org (LTS version)
+- Install with default options
+
+STEP 2: Restore environment file
+---------------------------------
+- If .env is missing, copy .env.backup to .env:
+  copy .env.backup .env
+
+STEP 3: Restore database
+------------------------
+- If mwh_management.db is missing, copy from backup:
+  copy mwh_management.db.backup mwh_management.db
+- If database.db is missing:
+  copy database.db.backup database.db
+
+STEP 4: Install dependencies
+---------------------------
+  npm install
+
+STEP 5: Start the server
+------------------------
+  node server.js
+  (or use start-app.bat)
+
+STEP 6: Access the app
+----------------------
+  Local: http://localhost:3000
+  Login: http://localhost:3000/login
+
+====================================
+CRITICAL FILES (do not lose these)
+====================================
+- .env                    -> Environment config (SMTP, session secret, etc.)
+- mwh_management.db       -> Main SQLite database (all your data)
+- database.db             -> Secondary database
+- uploads/                -> Uploaded photos and documents
+- public/company-logo/    -> Company logo
+- public/signed-payslips/ -> Signed payslip PDFs
+
+Backups created:
+- .env.backup
+- mwh_management.db.backup
+- database.db.backup

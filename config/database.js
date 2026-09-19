@@ -1581,6 +1581,17 @@ function initializeDatabase() {
       if (err) console.error('Error creating module_manager_location_filters table:', err);
     });
 
+    // Owner-based access filters for equipment managers
+    db.run(`CREATE TABLE IF NOT EXISTS module_manager_owner_filters (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      module_manager_id INTEGER NOT NULL,
+      owner_id INTEGER NOT NULL,
+      UNIQUE(module_manager_id, owner_id),
+      FOREIGN KEY (module_manager_id) REFERENCES module_managers(id) ON DELETE CASCADE
+    )`, (err) => {
+      if (err) console.error('Error creating module_manager_owner_filters table:', err);
+    });
+
     // Column visibility permissions per module manager
     db.run(`CREATE TABLE IF NOT EXISTS module_manager_column_visibility (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1964,6 +1975,129 @@ function migrateRedundantData() {
     )`);
 
     console.log('Catering Management tables created');
+
+    // ─── Warehouse Management Tables ───
+
+    // Warehouse Items (master list of stockable items in the warehouse)
+    db.run(`CREATE TABLE IF NOT EXISTS warehouse_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      unit TEXT NOT NULL,
+      current_stock REAL DEFAULT 0,
+      min_stock REAL DEFAULT 0,
+      cost_per_unit REAL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Warehouse Purchase Requests (warehouse manager requests to purchase items)
+    db.run(`CREATE TABLE IF NOT EXISTS warehouse_purchase_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      request_number TEXT NOT NULL UNIQUE,
+      request_date DATE NOT NULL,
+      supplier_id INTEGER,
+      notes TEXT,
+      status TEXT DEFAULT 'Pending',
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    )`);
+
+    // Warehouse Purchase Request Items (line items per purchase request)
+    db.run(`CREATE TABLE IF NOT EXISTS warehouse_purchase_request_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      request_id INTEGER NOT NULL,
+      warehouse_item_id INTEGER NOT NULL,
+      quantity REAL NOT NULL,
+      unit TEXT,
+      unit_price REAL DEFAULT 0,
+      FOREIGN KEY (request_id) REFERENCES warehouse_purchase_requests(id) ON DELETE CASCADE,
+      FOREIGN KEY (warehouse_item_id) REFERENCES warehouse_items(id)
+    )`);
+
+    // Warehouse Deliveries (confirm delivery against purchase requests)
+    db.run(`CREATE TABLE IF NOT EXISTS warehouse_deliveries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      delivery_number TEXT NOT NULL UNIQUE,
+      delivery_date DATE NOT NULL,
+      purchase_request_id INTEGER,
+      supplier_id INTEGER,
+      received_by TEXT,
+      notes TEXT,
+      status TEXT DEFAULT 'Received',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (purchase_request_id) REFERENCES warehouse_purchase_requests(id),
+      FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    )`);
+
+    // Warehouse Delivery Items (line items per delivery — actual received quantities)
+    db.run(`CREATE TABLE IF NOT EXISTS warehouse_delivery_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      delivery_id INTEGER NOT NULL,
+      warehouse_item_id INTEGER NOT NULL,
+      ordered_quantity REAL NOT NULL,
+      received_quantity REAL NOT NULL,
+      unit TEXT,
+      unit_price REAL DEFAULT 0,
+      FOREIGN KEY (delivery_id) REFERENCES warehouse_deliveries(id) ON DELETE CASCADE,
+      FOREIGN KEY (warehouse_item_id) REFERENCES warehouse_items(id)
+    )`);
+
+    // Warehouse to Catering Transfers (warehouse manager transfers stock to catering)
+    db.run(`CREATE TABLE IF NOT EXISTS warehouse_catering_transfers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      transfer_number TEXT NOT NULL UNIQUE,
+      transfer_date DATE NOT NULL,
+      notes TEXT,
+      status TEXT DEFAULT 'Pending',
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Warehouse Catering Transfer Items (line items per transfer)
+    db.run(`CREATE TABLE IF NOT EXISTS warehouse_catering_transfer_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      transfer_id INTEGER NOT NULL,
+      warehouse_item_id INTEGER NOT NULL,
+      ingredient_id INTEGER,
+      sent_quantity REAL NOT NULL,
+      received_quantity REAL,
+      unit TEXT,
+      status TEXT DEFAULT 'Pending',
+      notes TEXT,
+      FOREIGN KEY (transfer_id) REFERENCES warehouse_catering_transfers(id) ON DELETE CASCADE,
+      FOREIGN KEY (warehouse_item_id) REFERENCES warehouse_items(id),
+      FOREIGN KEY (ingredient_id) REFERENCES ingredients(id)
+    )`);
+
+    // Catering Business Unit Stock (stock distributed to each business unit)
+    db.run(`CREATE TABLE IF NOT EXISTS catering_business_unit_stock (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ingredient_id INTEGER NOT NULL,
+      business_type_assignment_id INTEGER NOT NULL,
+      quantity REAL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (ingredient_id) REFERENCES ingredients(id),
+      FOREIGN KEY (business_type_assignment_id) REFERENCES business_type_assignments(id)
+    )`);
+
+    // Catering Business Unit Sales (sales recorded per business unit)
+    db.run(`CREATE TABLE IF NOT EXISTS catering_business_unit_sales (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_type_assignment_id INTEGER NOT NULL,
+      sale_date DATE NOT NULL,
+      recipe_id INTEGER,
+      quantity INTEGER NOT NULL,
+      total_cost REAL DEFAULT 0,
+      notes TEXT,
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_type_assignment_id) REFERENCES business_type_assignments(id),
+      FOREIGN KEY (recipe_id) REFERENCES recipes(id)
+    )`);
+
+    console.log('Warehouse Management tables created');
 
     // Final cleanup: merge duplicate lookup values and enforce uniqueness
     dedupeEquipmentStatuses(() => {

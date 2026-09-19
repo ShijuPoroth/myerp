@@ -496,4 +496,413 @@ router.delete('/deployments/:id', (req, res) => {
   });
 });
 
+// ─── Warehouse Transfers (Catering side: receive and accept) ───
+
+// Get pending transfers (for notification badge)
+router.get('/pending-transfers', (req, res) => {
+  db.all(`SELECT t.*, 
+          (SELECT COUNT(*) FROM warehouse_catering_transfer_items ti WHERE ti.transfer_id = t.id AND ti.status = 'Pending') as pending_item_count
+          FROM warehouse_catering_transfers t
+          WHERE t.status = 'Pending'
+          ORDER BY t.created_at DESC`, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// Get a specific transfer with items (for catering to review)
+router.get('/transfers/:id', (req, res) => {
+  db.get('SELECT * FROM warehouse_catering_transfers WHERE id = ?', [req.params.id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Transfer not found' });
+
+    db.all(`SELECT ti.*, wi.name as item_name, wi.unit as item_unit,
+            ing.name as ingredient_name, ing.id as ingredient_id
+            FROM warehouse_catering_transfer_items ti
+            LEFT JOIN warehouse_items wi ON ti.warehouse_item_id = wi.id
+            LEFT JOIN ingredients ing ON ti.ingredient_id = ing.id
+            WHERE ti.transfer_id = ?`, [req.params.id], (err, items) => {
+      if (err) return res.status(500).json({ error: err.message });
+      row.items = items || [];
+      res.json(row);
+    });
+  });
+});
+
+// Accept transfer (full or with edited received quantities)
+router.post('/transfers/:id/accept', (req, res) => {
+  const transferId = req.params.id;
+  const { items } = req.body; // array of { item_id, received_quantity }
+
+  db.get('SELECT status FROM warehouse_catering_transfers WHERE id = ?', [transferId], (err, transfer) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!transfer) return res.status(404).json({ error: 'Transfer not found' });
+    if (transfer.status !== 'Pending') return res.status(400).json({ error: 'Transfer already processed' });
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'No items to accept' });
+    }
+
+    let pending = items.length;
+    let itemError = null;
+
+    items.forEach(item => {
+      // Update transfer item with received quantity and status
+      db.run('UPDATE warehouse_catering_transfer_items SET received_quantity = ?, status = ? WHERE id = ?',
+        [item.received_quantity, 'Received', item.item_id], (err) => {
+          if (err) { itemError = err.message; pending--; if (pending === 0) finishAccept(); return; }
+
+          // Get the ingredient_id for this transfer item
+          db.get('SELECT ingredient_id FROM warehouse_catering_transfer_items WHERE id = ?', [item.item_id], (err, row) => {
+            if (err) { itemError = err.message; pending--; if (pending === 0) finishAccept(); return; }
+            if (!row || !row.ingredient_id) { pending--; if (pending === 0) finishAccept(); return; }
+
+            // Add received quantity to catering ingredient stock
+            db.run('UPDATE ingredients SET current_stock = current_stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+              [item.received_quantity, row.ingredient_id], (err) => {
+                if (err) itemError = err.message;
+
+                // Log stock transaction
+                db.run('INSERT INTO ingredient_stock_transactions (ingredient_id, type, quantity, reference_type, reference_id, notes) VALUES (?, ?, ?, ?, ?, ?)',
+                  [row.ingredient_id, 'add', item.received_quantity, 'warehouse_transfer', transferId, 'Received from warehouse'], (err) => {
+                    pending--;
+                    if (pending === 0) finishAccept();
+                  });
+              });
+          });
+        });
+    });
+
+    function finishAccept() {
+      if (itemError) return res.status(500).json({ error: itemError });
+
+      // Mark transfer as completed
+      db.run('UPDATE warehouse_catering_transfers SET status = ? WHERE id = ?',
+        ['Completed', transferId], (err) => {
+          if (err) return res.status(500).json({ error: err.message });
+          res.json({ message: 'Transfer accepted, stock added to catering' });
+        });
+    }
+  });
+});
+
+// Reject transfer
+router.post('/transfers/:id/reject', (req, res) => {
+  const transferId = req.params.id;
+  const { reason } = req.body;
+
+  db.get('SELECT status FROM warehouse_catering_transfers WHERE id = ?', [transferId], (err, transfer) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!transfer) return res.status(404).json({ error: 'Transfer not found' });
+    if (transfer.status !== 'Pending') return res.status(400).json({ error: 'Transfer already processed' });
+
+    // Get transfer items to return stock to warehouse
+    db.all('SELECT warehouse_item_id, sent_quantity FROM warehouse_catering_transfer_items WHERE transfer_id = ?', [transferId], (err, items) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      let pending = (items || []).length;
+      if (pending === 0) {
+        db.run("UPDATE warehouse_catering_transfers SET status = 'Rejected' WHERE id = ?", [transferId], (err) => {
+          if (err) return res.status(500).json({ error: err.message });
+          res.json({ message: 'Transfer rejected' });
+        });
+        return;
+      }
+
+      items.forEach(item => {
+        // Return stock to warehouse
+        db.run('UPDATE warehouse_items SET current_stock = current_stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+          [item.sent_quantity, item.warehouse_item_id], (err) => {
+            pending--;
+            if (pending === 0) {
+              db.run("UPDATE warehouse_catering_transfer_items SET status = 'Rejected' WHERE transfer_id = ?", [transferId], (err) => {
+                db.run("UPDATE warehouse_catering_transfers SET status = 'Rejected' WHERE id = ?", [transferId], (err) => {
+                  if (err) return res.status(500).json({ error: err.message });
+                  res.json({ message: 'Transfer rejected, stock returned to warehouse' });
+                });
+              });
+            }
+          });
+      });
+    });
+  });
+});
+
+// ─── Business Unit Stock Distribution ───
+
+// Get all business unit stock
+router.get('/business-unit-stock', (req, res) => {
+  db.all(`SELECT bus.*, i.name as ingredient_name, i.unit,
+          bta.business_unit_code, c.name as country_name, lt.name as location_name,
+          slt.name as sub_location_name, bt.name as business_type_name
+          FROM catering_business_unit_stock bus
+          LEFT JOIN ingredients i ON bus.ingredient_id = i.id
+          LEFT JOIN business_type_assignments bta ON bus.business_type_assignment_id = bta.id
+          LEFT JOIN countries c ON bta.country_id = c.id
+          LEFT JOIN location_types lt ON bta.location_id = lt.id
+          LEFT JOIN sub_location_types slt ON bta.sub_location_id = slt.id
+          LEFT JOIN business_types bt ON bta.business_type_id = bt.id
+          ORDER BY i.name`, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// Distribute stock to a business unit
+router.post('/business-unit-stock/distribute', (req, res) => {
+  const { ingredient_id, business_type_assignment_id, quantity } = req.body;
+  if (!ingredient_id || !business_type_assignment_id || !quantity) {
+    return res.status(400).json({ error: 'Ingredient, business unit, and quantity are required' });
+  }
+
+  // Check catering has enough stock
+  db.get('SELECT current_stock, name FROM ingredients WHERE id = ?', [ingredient_id], (err, ing) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!ing) return res.status(404).json({ error: 'Ingredient not found' });
+    if ((ing.current_stock || 0) < quantity) {
+      return res.status(400).json({ error: `Insufficient catering stock for ${ing.name}. Available: ${ing.current_stock}, Requested: ${quantity}` });
+    }
+
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
+
+      // Deduct from catering central stock
+      db.run('UPDATE ingredients SET current_stock = current_stock - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [quantity, ingredient_id], (err) => {
+          if (err) { db.run('ROLLBACK'); return res.status(500).json({ error: err.message }); }
+
+          // Log stock transaction
+          db.run('INSERT INTO ingredient_stock_transactions (ingredient_id, type, quantity, reference_type, notes) VALUES (?, ?, ?, ?, ?)',
+            [ingredient_id, 'subtract', quantity, 'business_unit_distribution', 'Distributed to business unit'], (err) => {
+              if (err) { db.run('ROLLBACK'); return res.status(500).json({ error: err.message }); }
+
+              // Check if business unit stock record exists
+              db.get('SELECT id, quantity FROM catering_business_unit_stock WHERE ingredient_id = ? AND business_type_assignment_id = ?',
+                [ingredient_id, business_type_assignment_id], (err, existing) => {
+                  if (err) { db.run('ROLLBACK'); return res.status(500).json({ error: err.message }); }
+
+                  if (existing) {
+                    // Update existing stock
+                    db.run('UPDATE catering_business_unit_stock SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                      [quantity, existing.id], (err) => {
+                        if (err) { db.run('ROLLBACK'); return res.status(500).json({ error: err.message }); }
+                        db.run('COMMIT');
+                        res.json({ message: 'Stock distributed to business unit' });
+                      });
+                  } else {
+                    // Create new stock record
+                    db.run('INSERT INTO catering_business_unit_stock (ingredient_id, business_type_assignment_id, quantity) VALUES (?, ?, ?)',
+                      [ingredient_id, business_type_assignment_id, quantity], (err) => {
+                        if (err) { db.run('ROLLBACK'); return res.status(500).json({ error: err.message }); }
+                        db.run('COMMIT');
+                        res.json({ message: 'Stock distributed to business unit' });
+                      });
+                  }
+                });
+            });
+        });
+    });
+  });
+});
+
+// ─── Business Unit Sales ───
+
+// Get all business unit sales
+router.get('/business-unit-sales', (req, res) => {
+  const { business_type_assignment_id, from_date, to_date } = req.query;
+  let query = `SELECT bus.*, r.name as recipe_name,
+          bta.business_unit_code, c.name as country_name, lt.name as location_name,
+          slt.name as sub_location_name, bt.name as business_type_name
+          FROM catering_business_unit_sales bus
+          LEFT JOIN recipes r ON bus.recipe_id = r.id
+          LEFT JOIN business_type_assignments bta ON bus.business_type_assignment_id = bta.id
+          LEFT JOIN countries c ON bta.country_id = c.id
+          LEFT JOIN location_types lt ON bta.location_id = lt.id
+          LEFT JOIN sub_location_types slt ON bta.sub_location_id = slt.id
+          LEFT JOIN business_types bt ON bta.business_type_id = bt.id`;
+  const params = [];
+  const conditions = [];
+
+  if (business_type_assignment_id) { conditions.push('bus.business_type_assignment_id = ?'); params.push(business_type_assignment_id); }
+  if (from_date) { conditions.push('bus.sale_date >= ?'); params.push(from_date); }
+  if (to_date) { conditions.push('bus.sale_date <= ?'); params.push(to_date); }
+
+  if (conditions.length > 0) query += ' WHERE ' + conditions.join(' AND ');
+  query += ' ORDER BY bus.sale_date DESC, bus.created_at DESC';
+
+  db.all(query, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// Add a business unit sale (also deducts from business unit stock)
+router.post('/business-unit-sales', (req, res) => {
+  const { business_type_assignment_id, sale_date, items } = req.body;
+
+  if (!business_type_assignment_id || !sale_date) {
+    return res.status(400).json({ error: 'Business unit and sale date are required' });
+  }
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'At least one sale item is required' });
+  }
+
+  // Get recipe ingredients for all recipes in the sale
+  const recipeIds = items.map(i => i.recipe_id).filter(id => id);
+  let ingredientCheckDone = false;
+
+  function processSale() {
+    let pending = items.length;
+    let saleError = null;
+
+    items.forEach(item => {
+      const totalCost = item.total_cost || 0;
+      db.run('INSERT INTO catering_business_unit_sales (business_type_assignment_id, sale_date, recipe_id, quantity, total_cost, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [business_type_assignment_id, sale_date, item.recipe_id || null, item.quantity, totalCost, item.notes || '', req.session.userId || null], (err) => {
+          if (err) saleError = err.message;
+          pending--;
+          if (pending === 0) {
+            if (saleError) return res.status(500).json({ error: saleError });
+            res.json({ message: 'Sale recorded' });
+          }
+        });
+    });
+  }
+
+  // If there are recipes, deduct ingredients from business unit stock
+  if (recipeIds.length > 0) {
+    const placeholders = recipeIds.map(() => '?').join(',');
+    db.all(`SELECT ri.recipe_id, ri.ingredient_id, ri.quantity
+            FROM recipe_ingredients ri
+            WHERE ri.recipe_id IN (${placeholders})`, recipeIds, (err, recipeIngredients) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      // Aggregate required ingredients per sale
+      const requiredByIngredient = {};
+      for (const item of items) {
+        const itemIngs = recipeIngredients.filter(ri => ri.recipe_id === item.recipe_id);
+        for (const ing of itemIngs) {
+          const required = ing.quantity * item.quantity;
+          requiredByIngredient[ing.ingredient_id] = (requiredByIngredient[ing.ingredient_id] || 0) + required;
+        }
+      }
+
+      // Check and deduct from business unit stock
+      const ingredientIds = Object.keys(requiredByIngredient);
+      let pendingCheck = ingredientIds.length;
+
+      if (pendingCheck === 0) { processSale(); return; }
+
+      let checkError = null;
+      ingredientIds.forEach(ingId => {
+        const required = requiredByIngredient[ingId];
+        db.get('SELECT id, quantity FROM catering_business_unit_stock WHERE ingredient_id = ? AND business_type_assignment_id = ?',
+          [ingId, business_type_assignment_id], (err, busStock) => {
+            if (err) { checkError = err.message; pendingCheck--; if (pendingCheck === 0) { if (checkError) return res.status(500).json({ error: checkError }); processSale(); } return; }
+
+            if (!busStock || (busStock.quantity || 0) < required) {
+              checkError = `Insufficient business unit stock for ingredient ID ${ingId}`;
+              pendingCheck--;
+              if (pendingCheck === 0) {
+                if (checkError) return res.status(400).json({ error: checkError });
+                processSale();
+              }
+              return;
+            }
+
+            // Deduct from business unit stock
+            db.run('UPDATE catering_business_unit_stock SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+              [required, busStock.id], (err) => {
+                if (err) checkError = err.message;
+                pendingCheck--;
+                if (pendingCheck === 0) {
+                  if (checkError) return res.status(500).json({ error: checkError });
+                  processSale();
+                }
+              });
+          });
+      });
+    });
+  } else {
+    processSale();
+  }
+});
+
+// Delete a business unit sale (restore stock)
+router.delete('/business-unit-sales/:id', (req, res) => {
+  db.get('SELECT * FROM catering_business_unit_sales WHERE id = ?', [req.params.id], (err, sale) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!sale) return res.status(404).json({ error: 'Sale not found' });
+
+    // Restore ingredients to business unit stock
+    if (sale.recipe_id) {
+      db.all('SELECT ingredient_id, quantity FROM recipe_ingredients WHERE recipe_id = ?', [sale.recipe_id], (err, ingredients) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        let pending = (ingredients || []).length;
+        if (pending === 0) {
+          db.run('DELETE FROM catering_business_unit_sales WHERE id = ?', [req.params.id], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: 'Sale deleted' });
+          });
+          return;
+        }
+
+        ingredients.forEach(ing => {
+          const restoration = ing.quantity * sale.quantity;
+          db.get('SELECT id FROM catering_business_unit_stock WHERE ingredient_id = ? AND business_type_assignment_id = ?',
+            [ing.ingredient_id, sale.business_type_assignment_id], (err, busStock) => {
+              if (busStock) {
+                db.run('UPDATE catering_business_unit_stock SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                  [restoration, busStock.id], (err) => {
+                    pending--;
+                    if (pending === 0) {
+                      db.run('DELETE FROM catering_business_unit_sales WHERE id = ?', [req.params.id], (err) => {
+                        if (err) return res.status(500).json({ error: err.message });
+                        res.json({ message: 'Sale deleted, stock restored' });
+                      });
+                    }
+                  });
+              } else {
+                pending--;
+                if (pending === 0) {
+                  db.run('DELETE FROM catering_business_unit_sales WHERE id = ?', [req.params.id], (err) => {
+                    if (err) return res.status(500).json({ error: err.message });
+                    res.json({ message: 'Sale deleted, stock restored' });
+                  });
+                }
+              }
+            });
+        });
+      });
+    } else {
+      db.run('DELETE FROM catering_business_unit_sales WHERE id = ?', [req.params.id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Sale deleted' });
+      });
+    }
+  });
+});
+
+// ─── Business Unit Consumption Summary ───
+router.get('/business-unit-consumption', (req, res) => {
+  db.all(`SELECT bta.id as business_unit_id, bta.business_unit_code,
+          c.name as country_name, lt.name as location_name,
+          slt.name as sub_location_name, bt.name as business_type_name,
+          COUNT(bus.id) as total_sales,
+          COALESCE(SUM(bus.quantity), 0) as total_quantity_sold,
+          COALESCE(SUM(bus.total_cost), 0) as total_cost
+          FROM business_type_assignments bta
+          LEFT JOIN catering_business_unit_sales bus ON bta.id = bus.business_type_assignment_id
+          LEFT JOIN countries c ON bta.country_id = c.id
+          LEFT JOIN location_types lt ON bta.location_id = lt.id
+          LEFT JOIN sub_location_types slt ON bta.sub_location_id = slt.id
+          LEFT JOIN business_types bt ON bta.business_type_id = bt.id
+          GROUP BY bta.id
+          ORDER BY c.name, lt.name, bt.name`, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
 module.exports = router;

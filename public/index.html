@@ -65,6 +65,12 @@
                     <li>
                         <button class="sidebar-item w-full text-left px-4 py-2 rounded hover:bg-blue-800 transition" data-section="catering">
                             <i class="fas fa-utensils mr-2"></i> Catering Management
+                            <span id="catering-transfer-badge" class="hidden ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full"></span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="sidebar-item w-full text-left px-4 py-2 rounded hover:bg-blue-800 transition" data-section="warehouse">
+                            <i class="fas fa-warehouse mr-2"></i> Warehouse Management
                         </button>
                     </li>
                     <li>
@@ -3027,6 +3033,129 @@
                 </div>
             </section>
 
+            <!-- Warehouse Management Section -->
+            <section id="warehouse-section" data-section-hidden="true">
+                <div class="flex flex-wrap gap-4 mb-0">
+                    <button onclick="showWarehouseSubTab('items')" class="warehouse-sub-tab px-4 py-2 bg-blue-600 text-white rounded-lg" data-tab="items">Warehouse Items</button>
+                    <button onclick="showWarehouseSubTab('purchase-requests')" class="warehouse-sub-tab px-4 py-2 bg-gray-200 text-gray-700 rounded-lg" data-tab="purchase-requests">Purchase Requests</button>
+                    <button onclick="showWarehouseSubTab('deliveries')" class="warehouse-sub-tab px-4 py-2 bg-gray-200 text-gray-700 rounded-lg" data-tab="deliveries">Delivery Confirmation</button>
+                    <button onclick="showWarehouseSubTab('transfers')" class="warehouse-sub-tab px-4 py-2 bg-gray-200 text-gray-700 rounded-lg" data-tab="transfers">Transfer to Catering</button>
+                </div>
+
+                <!-- Warehouse Items Tab -->
+                <div id="warehouse-items-tab" class="warehouse-sub-tab-content">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">Warehouse Items</h3>
+                            <button onclick="openWarehouseItemModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                <i class="fas fa-plus mr-2"></i>Add Item
+                            </button>
+                        </div>
+                        <div class="overflow-auto" style="max-height: calc(100vh - 300px);">
+                            <table class="w-full min-w-full text-sm">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Current Stock</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Min Stock</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cost/Unit</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="warehouse-items-table-body" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Purchase Requests Tab -->
+                <div id="warehouse-purchase-requests-tab" class="warehouse-sub-tab-content hidden">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">Purchase Requests</h3>
+                            <button onclick="openPurchaseRequestModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                <i class="fas fa-plus mr-2"></i>New Purchase Request
+                            </button>
+                        </div>
+                        <div class="overflow-auto" style="max-height: calc(100vh - 300px);">
+                            <table class="w-full min-w-full text-sm">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Request #</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="warehouse-purchase-requests-table-body" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deliveries Tab -->
+                <div id="warehouse-deliveries-tab" class="warehouse-sub-tab-content hidden">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">Delivery Confirmation</h3>
+                            <button onclick="openDeliveryModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                <i class="fas fa-plus mr-2"></i>Confirm Delivery
+                            </button>
+                        </div>
+                        <div class="overflow-auto" style="max-height: calc(100vh - 300px);">
+                            <table class="w-full min-w-full text-sm">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Delivery #</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Purchase Request</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Received By</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="warehouse-deliveries-table-body" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transfers Tab -->
+                <div id="warehouse-transfers-tab" class="warehouse-sub-tab-content hidden">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">Transfer to Catering</h3>
+                            <button onclick="openWarehouseTransferModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                <i class="fas fa-plus mr-2"></i>New Transfer
+                            </button>
+                        </div>
+                        <div class="overflow-auto" style="max-height: calc(100vh - 300px);">
+                            <table class="w-full min-w-full text-sm">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Transfer #</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="warehouse-transfers-table-body" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Catering Management Section -->
             <section id="catering-section" data-section-hidden="true">
                 <div class="flex flex-wrap gap-4 mb-0">
@@ -3037,6 +3166,10 @@
                     <button onclick="showCateringSubTab('sales')" class="catering-sub-tab px-4 py-2 bg-gray-200 text-gray-700 rounded-lg" data-tab="sales">Sales</button>
                     <button onclick="showCateringSubTab('employees')" class="catering-sub-tab px-4 py-2 bg-gray-200 text-gray-700 rounded-lg" data-tab="employees">Catering Employees</button>
                     <button onclick="showCateringSubTab('deployments')" class="catering-sub-tab px-4 py-2 bg-gray-200 text-gray-700 rounded-lg" data-tab="deployments">Employee Deployments</button>
+                    <button onclick="showCateringSubTab('transfers')" class="catering-sub-tab px-4 py-2 bg-gray-200 text-gray-700 rounded-lg" data-tab="transfers">Warehouse Transfers</button>
+                    <button onclick="showCateringSubTab('business-unit-stock')" class="catering-sub-tab px-4 py-2 bg-gray-200 text-gray-700 rounded-lg" data-tab="business-unit-stock">Business Unit Stock</button>
+                    <button onclick="showCateringSubTab('business-unit-sales')" class="catering-sub-tab px-4 py-2 bg-gray-200 text-gray-700 rounded-lg" data-tab="business-unit-sales">Business Unit Sales</button>
+                    <button onclick="showCateringSubTab('business-unit-consumption')" class="catering-sub-tab px-4 py-2 bg-gray-200 text-gray-700 rounded-lg" data-tab="business-unit-consumption">Consumption Summary</button>
                 </div>
 
                 <!-- Recipes Tab -->
@@ -3226,6 +3359,114 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Warehouse Transfers Tab -->
+                <div id="catering-transfers-tab" class="catering-sub-tab-content hidden">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">Warehouse Transfers</h3>
+                        </div>
+                        <div class="overflow-auto" style="max-height: calc(100vh - 300px);">
+                            <table class="w-full min-w-full text-sm">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Transfer #</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="catering-transfers-table-body" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Business Unit Stock Tab -->
+                <div id="catering-business-unit-stock-tab" class="catering-sub-tab-content hidden">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">Business Unit Stock</h3>
+                            <button onclick="openDistributeStockModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                <i class="fas fa-plus mr-2"></i>Distribute Stock
+                            </button>
+                        </div>
+                        <div class="overflow-auto" style="max-height: calc(100vh - 300px);">
+                            <table class="w-full min-w-full text-sm">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ingredient</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Business Unit</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="catering-bus-stock-table-body" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Business Unit Sales Tab -->
+                <div id="catering-business-unit-sales-tab" class="catering-sub-tab-content hidden">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">Business Unit Sales</h3>
+                            <div class="flex gap-2 items-center">
+                                <select id="bus-sales-filter-unit" onchange="filterBusinessUnitSales()" class="px-3 py-1.5 text-sm border rounded-lg">
+                                    <option value="">All Business Units</option>
+                                </select>
+                                <button onclick="openBusinessUnitSaleModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                    <i class="fas fa-plus mr-2"></i>Record Sale
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-auto" style="max-height: calc(100vh - 300px);">
+                            <table class="w-full min-w-full text-sm">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Business Unit</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Recipe</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Cost</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="catering-bus-sales-table-body" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Business Unit Consumption Tab -->
+                <div id="catering-business-unit-consumption-tab" class="catering-sub-tab-content hidden">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">Business Unit Consumption Summary</h3>
+                        </div>
+                        <div class="overflow-auto" style="max-height: calc(100vh - 300px);">
+                            <table class="w-full min-w-full text-sm">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Business Unit</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Sales</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Qty Sold</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="catering-bus-consumption-table-body" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </section>
         </main>
     </div>
@@ -3273,11 +3514,12 @@
     <script src="js/navigation.js?v=54"></script>
     <script src="js/event-dispatcher.js?v=1"></script>
     <script src="js/catering/catering.js?v=15"></script>
+    <script src="js/warehouse-management.js?v=1"></script>
     <script src="js/dashboard.js?v=53"></script>
     <script src="js/locations.js?v=11"></script>
     <script src="js/equipment/equipment-core.js?v=123"></script>
     <script src="js/equipment/equipment-transfers.js?v=17"></script>
-    <script src="js/equipment/equipment-maintenance.js?v=40"></script>
+    <script src="js/equipment/equipment-maintenance.js?v=43"></script>
     <script src="js/equipment/equipment-spare-parts.js?v=18"></script>
     <script src="js/equipment/equipment-parts.js?v=3"></script>
     <script src="js/equipment/equipment-write-offs.js?v=15"></script>
@@ -3293,7 +3535,7 @@
     <script src="js/payment-management/payment-management-advance.js?v=4"></script>
     <script src="js/payment-management/payment-management-payslip.js?v=17"></script>
     <script src="js/payment-management/payment-management-history.js?v=6"></script>
-    <script src="js/admin-settings.js?v=68"></script>
+    <script src="js/admin-settings.js?v=69"></script>
     <script src="js/admin-settings-hr/admin-settings-hr-main.js?v=2"></script>
     <script src="js/admin-settings-hr/admin-settings-hr-positions.js?v=3"></script>
     <script src="js/admin-settings-hr/admin-settings-hr-departments.js?v=4"></script>

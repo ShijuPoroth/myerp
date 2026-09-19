@@ -3674,3 +3674,279 @@
         </div>
     </div>
 </div>
+
+<!-- Warehouse Item Modal -->
+<div id="warehouse-item-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl w-96 p-6">
+        <h3 id="warehouse-item-modal-title" class="text-lg font-semibold mb-4">Add Warehouse Item</h3>
+        <form id="warehouse-item-form" class="space-y-3">
+            <input type="hidden" id="warehouse-item-id">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Item Name *</label>
+                <input type="text" id="warehouse-item-name" required class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. Rice 25kg">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Unit *</label>
+                <input type="text" id="warehouse-item-unit" required class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. kg, bag, liter">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Current Stock</label>
+                    <input type="number" step="0.01" id="warehouse-item-stock" class="w-full border rounded-lg px-3 py-2 text-sm" value="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Min Stock</label>
+                    <input type="number" step="0.01" id="warehouse-item-min-stock" class="w-full border rounded-lg px-3 py-2 text-sm" value="0">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cost per Unit</label>
+                <input type="number" step="0.01" id="warehouse-item-cost" class="w-full border rounded-lg px-3 py-2 text-sm" value="0">
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">Save</button>
+                <button type="button" onclick="closeWarehouseItemModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Warehouse Purchase Request Modal -->
+<div id="warehouse-purchase-request-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div class="p-4 border-b flex-shrink-0">
+            <h3 class="text-lg font-semibold">New Purchase Request</h3>
+        </div>
+        <form id="warehouse-purchase-request-form" class="p-4 overflow-y-auto flex-1 space-y-3">
+            <input type="hidden" id="warehouse-pr-id">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Request Number *</label>
+                    <input type="text" id="warehouse-pr-number" required class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                    <input type="date" id="warehouse-pr-date" required class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                <select id="warehouse-pr-supplier" class="w-full border rounded-lg px-3 py-2 text-sm">
+                    <option value="">Select Supplier</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea id="warehouse-pr-notes" class="w-full border rounded-lg px-3 py-2 text-sm" rows="2"></textarea>
+            </div>
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-sm font-medium text-gray-700">Items</label>
+                    <button type="button" onclick="addPurchaseRequestItemRow()" class="text-blue-600 text-sm hover:text-blue-800"><i class="fas fa-plus mr-1"></i>Add Item</button>
+                </div>
+                <div id="warehouse-pr-items-container" class="space-y-2"></div>
+            </div>
+            <div class="flex gap-2 pt-2 border-t">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">Save</button>
+                <button type="button" onclick="closePurchaseRequestModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Warehouse PR View Modal -->
+<div id="warehouse-pr-view-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div class="p-4 border-b flex-shrink-0 flex justify-between items-center">
+            <h3 class="text-lg font-semibold">Purchase Request Details</h3>
+            <button type="button" onclick="document.getElementById('warehouse-pr-view-modal').classList.add('hidden'); document.getElementById('warehouse-pr-view-modal').classList.remove('flex');" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div id="warehouse-pr-view-body" class="p-4 overflow-y-auto flex-1"></div>
+    </div>
+</div>
+
+<!-- Warehouse Delivery Modal -->
+<div id="warehouse-delivery-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div class="p-4 border-b flex-shrink-0">
+            <h3 class="text-lg font-semibold">Confirm Delivery</h3>
+        </div>
+        <form id="warehouse-delivery-form" class="p-4 overflow-y-auto flex-1 space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Delivery Number *</label>
+                    <input type="text" id="warehouse-delivery-number" required class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Delivery Date *</label>
+                    <input type="date" id="warehouse-delivery-date" required class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Request</label>
+                    <select id="warehouse-delivery-pr" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="">Select Purchase Request (optional)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                    <select id="warehouse-delivery-supplier" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="">Select Supplier</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Received By</label>
+                <input type="text" id="warehouse-delivery-received-by" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Name of person receiving">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea id="warehouse-delivery-notes" class="w-full border rounded-lg px-3 py-2 text-sm" rows="2"></textarea>
+            </div>
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-sm font-medium text-gray-700">Delivery Items</label>
+                    <button type="button" onclick="addDeliveryItemRow()" class="text-blue-600 text-sm hover:text-blue-800"><i class="fas fa-plus mr-1"></i>Add Item</button>
+                </div>
+                <div id="warehouse-delivery-items-container" class="space-y-2"></div>
+            </div>
+            <div class="flex gap-2 pt-2 border-t">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">Confirm Delivery</button>
+                <button type="button" onclick="closeDeliveryModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Warehouse Delivery View Modal -->
+<div id="warehouse-delivery-view-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div class="p-4 border-b flex-shrink-0 flex justify-between items-center">
+            <h3 class="text-lg font-semibold">Delivery Details</h3>
+            <button type="button" onclick="document.getElementById('warehouse-delivery-view-modal').classList.add('hidden'); document.getElementById('warehouse-delivery-view-modal').classList.remove('flex');" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div id="warehouse-delivery-view-body" class="p-4 overflow-y-auto flex-1"></div>
+    </div>
+</div>
+
+<!-- Warehouse Transfer Modal -->
+<div id="warehouse-transfer-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div class="p-4 border-b flex-shrink-0">
+            <h3 class="text-lg font-semibold">New Transfer to Catering</h3>
+        </div>
+        <form id="warehouse-transfer-form" class="p-4 overflow-y-auto flex-1 space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Transfer Number *</label>
+                    <input type="text" id="warehouse-transfer-number" required class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Transfer Date *</label>
+                    <input type="date" id="warehouse-transfer-date" required class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea id="warehouse-transfer-notes" class="w-full border rounded-lg px-3 py-2 text-sm" rows="2"></textarea>
+            </div>
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-sm font-medium text-gray-700">Items to Transfer</label>
+                    <button type="button" onclick="addTransferItemRow()" class="text-blue-600 text-sm hover:text-blue-800"><i class="fas fa-plus mr-1"></i>Add Item</button>
+                </div>
+                <div id="warehouse-transfer-items-container" class="space-y-2"></div>
+            </div>
+            <div class="flex gap-2 pt-2 border-t">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">Create Transfer</button>
+                <button type="button" onclick="closeWarehouseTransferModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Warehouse Transfer View Modal -->
+<div id="warehouse-transfer-view-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div class="p-4 border-b flex-shrink-0 flex justify-between items-center">
+            <h3 class="text-lg font-semibold">Transfer Details</h3>
+            <button type="button" onclick="document.getElementById('warehouse-transfer-view-modal').classList.add('hidden'); document.getElementById('warehouse-transfer-view-modal').classList.remove('flex');" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div id="warehouse-transfer-view-body" class="p-4 overflow-y-auto flex-1"></div>
+    </div>
+</div>
+
+<!-- Catering Transfer Review Modal -->
+<div id="catering-transfer-review-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div class="p-4 border-b flex-shrink-0 flex justify-between items-center">
+            <h3 id="catering-transfer-review-title" class="text-lg font-semibold">Review Transfer</h3>
+            <button type="button" onclick="document.getElementById('catering-transfer-review-modal').classList.add('hidden'); document.getElementById('catering-transfer-review-modal').classList.remove('flex');" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div id="catering-transfer-review-body" class="p-4 overflow-y-auto flex-1"></div>
+    </div>
+</div>
+
+<!-- Catering Distribute Stock Modal -->
+<div id="catering-distribute-stock-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl w-96 p-6">
+        <h3 class="text-lg font-semibold mb-4">Distribute Stock to Business Unit</h3>
+        <form id="catering-distribute-stock-form" class="space-y-3">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Ingredient *</label>
+                <select id="distribute-ingredient" required class="w-full border rounded-lg px-3 py-2 text-sm">
+                    <option value="">Select Ingredient</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Business Unit *</label>
+                <select id="distribute-business-unit" required class="w-full border rounded-lg px-3 py-2 text-sm">
+                    <option value="">Select Business Unit</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
+                <input type="number" step="0.01" id="distribute-quantity" required class="w-full border rounded-lg px-3 py-2 text-sm" value="1">
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">Distribute</button>
+                <button type="button" onclick="closeDistributeStockModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Catering Business Unit Sale Modal -->
+<div id="catering-bus-sale-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div class="p-4 border-b flex-shrink-0">
+            <h3 class="text-lg font-semibold">Record Business Unit Sale</h3>
+        </div>
+        <form id="catering-bus-sale-form" class="p-4 overflow-y-auto flex-1 space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Business Unit *</label>
+                    <select id="bus-sale-business-unit" required class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="">Select Business Unit</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Sale Date *</label>
+                    <input type="date" id="bus-sale-date" required class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-sm font-medium text-gray-700">Sale Items</label>
+                    <button type="button" onclick="addBusSaleItemRow()" class="text-blue-600 text-sm hover:text-blue-800"><i class="fas fa-plus mr-1"></i>Add Item</button>
+                </div>
+                <div id="catering-bus-sale-items-container" class="space-y-2"></div>
+            </div>
+            <div class="flex gap-2 pt-2 border-t">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">Record Sale</button>
+                <button type="button" onclick="closeBusinessUnitSaleModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
