@@ -3838,7 +3838,7 @@ async function renderAccessControl() {
     const container = document.getElementById('access-control-modules-container');
     if (!container) return;
     const token = ++_renderAccessControlToken;
-    container.innerHTML = '<div class="text-center py-12"><div class="inline-flex flex-col items-center gap-3"><div class="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div><span class="text-gray-500 text-sm">Loading access control...</span></div></div>';
+    container.innerHTML = ''; // global fetch loader covers the loading state
 
     const grid = document.createElement('div');
     grid.className = 'grid grid-cols-2 gap-4';
