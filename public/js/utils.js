@@ -470,6 +470,16 @@ function showTableError(tbodyId, message) {
     tbody.innerHTML = `<tr><td colspan="${colCount}" class="text-center py-8 text-red-500 text-sm"><i class="fas fa-exclamation-circle mr-2"></i>${msg}</td></tr>`;
 }
 
+// ==================== MOBILE SIDEBAR ====================
+function toggleMobileSidebar() {
+    const c = document.querySelector('.app-container');
+    if (c) c.classList.toggle('sidebar-open');
+}
+function closeMobileSidebar() {
+    const c = document.querySelector('.app-container');
+    if (c) c.classList.remove('sidebar-open');
+}
+
 // ==================== GLOBAL ACTION LOADER ====================
 // Shows a blocking spinner overlay whenever any API call is in flight,
 // so clicks get immediate visual feedback and can't be repeated while

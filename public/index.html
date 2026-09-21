@@ -6,7 +6,7 @@
     <title>OpsMaster ERP</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/css/tailwind.css">
-    <link rel="stylesheet" href="/css/custom.css">
+    <link rel="stylesheet" href="/css/custom.css?v=2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -98,12 +98,16 @@
             <!-- Developer credit -->
             <div class="p-4 border-t border-blue-800 text-center" data-developer-credit></div>
         </aside>
+        <div id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
 
         <!-- Main Content -->
         <main class="app-main bg-gray-100">
             <!-- Header -->
             <header class="bg-white shadow-sm p-4 flex justify-between items-center">
-                <h2 id="page-title" class="text-2xl font-semibold text-gray-800">Dashboard</h2>
+                <div class="flex items-center min-w-0">
+                    <button id="mobile-menu-btn" onclick="toggleMobileSidebar()" class="mr-3 text-gray-600 hover:text-gray-900 text-xl" aria-label="Menu"><i class="fas fa-bars"></i></button>
+                    <h2 id="page-title" class="text-2xl font-semibold text-gray-800">Dashboard</h2>
+                </div>
                 <div class="flex items-center gap-3">
                     <div id="logged-in-user-info" class="hidden flex items-center gap-2 text-sm text-gray-600">
                         <i class="fas fa-user-circle text-gray-400"></i>
@@ -3509,9 +3513,9 @@
 
     <script src="js/developer-info.js?v=1"></script>
     <script src="js/config.js?v=12"></script>
-    <script src="js/utils.js?v=42"></script>
+    <script src="js/utils.js?v=43"></script>
     <script src="js/auth.js?v=21"></script>
-    <script src="js/navigation.js?v=54"></script>
+    <script src="js/navigation.js?v=55"></script>
     <script src="js/event-dispatcher.js?v=1"></script>
     <script src="js/catering/catering.js?v=15"></script>
     <script src="js/warehouse-management.js?v=1"></script>

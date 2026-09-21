@@ -113,3 +113,37 @@ html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
 /* login.html - login page styles */
 .login-page-body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
 .login-card { background: white; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); }
+
+/* ===== Mobile shell: hamburger drawer sidebar ===== */
+#mobile-menu-btn { display: none; }
+#sidebar-backdrop { display: none; }
+
+@media (max-width: 767px) {
+    .app-container { grid-template-columns: 1fr; }
+    .app-sidebar {
+        position: fixed; top: 0; left: 0; bottom: 0;
+        width: 260px; z-index: 80;
+        transform: translateX(-105%);
+        transition: transform 0.25s ease;
+    }
+    .app-container.sidebar-open .app-sidebar {
+        transform: translateX(0);
+        box-shadow: 0 0 40px rgba(0,0,0,0.4);
+    }
+    #sidebar-backdrop {
+        display: block;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 70;
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.25s ease;
+    }
+    .app-container.sidebar-open #sidebar-backdrop { opacity: 1; pointer-events: auto; }
+    #mobile-menu-btn { display: inline-flex; align-items: center; justify-content: center; }
+    /* Tighten chrome so content gets more room */
+    .app-main > section { padding: 12px !important; }
+    .app-main > header { padding: 10px 12px !important; }
+    #page-title { font-size: 1.15rem; }
+    /* Cap modal width to viewport */
+    .modal > div { max-width: 96vw !important; }
+}

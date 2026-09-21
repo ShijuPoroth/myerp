@@ -556,6 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => {
             const section = btn.getAttribute('data-section');
             if (section) showSection(section);
+            if (typeof closeMobileSidebar === 'function') closeMobileSidebar();
         });
     });
 });
