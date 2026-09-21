@@ -480,6 +480,7 @@ function showTableError(tbodyId, message) {
 (function () {
     let pendingCount = 0;
     let showTimer = null;
+    let hideTimer = null;
     let loaderEl = null;
 
     function ensureLoader() {
@@ -501,6 +502,7 @@ function showTableError(tbodyId, message) {
 
     function showLoader() {
         clearTimeout(showTimer);
+        clearTimeout(hideTimer);
         showTimer = setTimeout(() => {
             if (pendingCount > 0) ensureLoader().style.display = 'flex';
         }, 250); // debounce: skip flicker on fast requests
@@ -508,7 +510,12 @@ function showTableError(tbodyId, message) {
 
     function hideLoader() {
         clearTimeout(showTimer);
-        if (loaderEl) loaderEl.style.display = 'none';
+        clearTimeout(hideTimer);
+        // Hold the loader briefly after the last request finishes so chains
+        // of consecutive fetches don't flash it off and back on
+        hideTimer = setTimeout(() => {
+            if (pendingCount === 0 && loaderEl) loaderEl.style.display = 'none';
+        }, 350);
     }
 
     const origFetch = window.fetch.bind(window);
