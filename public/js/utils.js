@@ -503,7 +503,12 @@ function showTableError(tbodyId, message) {
         clearTimeout(showTimer);
         clearTimeout(hideTimer);
         showTimer = setTimeout(() => {
-            if (pendingCount > 0) ensureLoader().style.display = 'flex';
+            if (pendingCount <= 0) return;
+            // Skip the overlay if a spinner is already visible elsewhere
+            // (table loading rows, lightbox, etc.) - avoids double spinners
+            const hasVisibleSpinner = Array.from(document.querySelectorAll('.animate-spin'))
+                .some(el => el.offsetParent !== null && !el.closest('#global-fetch-loader'));
+            if (!hasVisibleSpinner) ensureLoader().style.display = 'flex';
         }, 250); // debounce: skip flicker on fast requests
     }
 
