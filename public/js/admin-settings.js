@@ -3544,7 +3544,7 @@ function hasTabActionPermission(module, tab, subtab, action) {
         return checkSubtabsForAction(module, tab, action);
     }
 
-    return action === 'can_add' ? true : false;
+    return (action === 'can_add' || action === 'can_export') ? true : false;
 }
 
 function getAllowedSubtabs(module, tab) {
@@ -3641,7 +3641,8 @@ async function loadCurrentModuleTabPermissions() {
                 can_view: p.can_view,
                 can_add: p.can_add,
                 can_edit: p.can_edit,
-                can_delete: p.can_delete
+                can_delete: p.can_delete,
+                can_export: p.can_export !== undefined ? p.can_export : 1
             };
         });
     } catch (error) {
@@ -3764,7 +3765,8 @@ async function loadCurrentModulePermissions() {
                 can_view: p.can_view,
                 can_add: p.can_add,
                 can_edit: p.can_edit,
-                can_delete: p.can_delete
+                can_delete: p.can_delete,
+                can_export: p.can_export !== undefined ? p.can_export : 1
             };
         });
     } catch (error) {
@@ -3790,6 +3792,7 @@ function hasTablePermission(tableName, action) {
     if (!p) return false;
     if (action === 'add') return p.can_add;
     if (action === 'delete') return p.can_delete;
+    if (action === 'export') return p.can_export !== undefined ? !!p.can_export : true;
     return p.can_edit;
 }
 
@@ -3852,13 +3855,14 @@ async function renderAccessControl() {
                 can_view: p.can_view,
                 can_add: p.can_add,
                 can_edit: p.can_edit,
-                can_delete: p.can_delete
+                can_delete: p.can_delete,
+                can_export: p.can_export !== undefined ? p.can_export : 1
             };
         });
 
         const getPerm = (module, tab, subtab) => {
             const key = getTabPermKey(module, tab, subtab || '');
-            return tabPermMap[key] || { can_view: 1, can_add: 1, can_edit: 0, can_delete: 0 };
+            return tabPermMap[key] || { can_view: 1, can_add: 1, can_edit: 0, can_delete: 0, can_export: 1 };
         };
 
         const makeCheck = (managerId, module, tab, subtab, action, checked) =>
@@ -3868,6 +3872,7 @@ async function renderAccessControl() {
             <td class="px-1 py-1 text-center">${makeCheck(managerId, module, tab, subtab, 'add', p.can_add)}</td>
             <td class="px-1 py-1 text-center">${makeCheck(managerId, module, tab, subtab, 'edit', p.can_edit)}</td>
             <td class="px-1 py-1 text-center">${makeCheck(managerId, module, tab, subtab, 'delete', p.can_delete)}</td>
+            <td class="px-1 py-1 text-center">${makeCheck(managerId, module, tab, subtab, 'export', p.can_export)}</td>
         `;
 
         let tabRows = '';
@@ -3879,7 +3884,7 @@ async function renderAccessControl() {
                 <tr class="bg-gray-50 border-b border-gray-100">
                     <td class="px-3 py-1.5 text-xs font-semibold text-gray-700">${tab.label}</td>
                     <td class="px-1 py-1 text-center">${makeCheck(manager.id, manager.module_name, tab.key, '', 'view', p.can_view)}</td>
-                    ${hasSubtabs ? '<td class="px-1 py-1 text-center" colspan="3"></td>' : makeActionCells(p, manager.id, manager.module_name, tab.key, '')}
+                    ${hasSubtabs ? '<td class="px-1 py-1 text-center" colspan="4"></td>' : makeActionCells(p, manager.id, manager.module_name, tab.key, '')}
                 </tr>`;
 
             if (hasSubtabs) {
@@ -4047,6 +4052,7 @@ async function renderAccessControl() {
                         <th class="px-1 py-1 text-center font-medium w-10">Add</th>
                         <th class="px-1 py-1 text-center font-medium w-10">Edit</th>
                         <th class="px-1 py-1 text-center font-medium w-10">Delete</th>
+                        <th class="px-1 py-1 text-center font-medium w-10">Export</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">${tabRows}</tbody>
@@ -4125,6 +4131,7 @@ async function saveAllPermissions(managerId, moduleName) {
         const addCb = document.querySelector(`input[data-mgr="${managerId}"][data-tab="${tab.key}"][data-subtab=""][data-action="add"]`);
         const editCb = document.querySelector(`input[data-mgr="${managerId}"][data-tab="${tab.key}"][data-subtab=""][data-action="edit"]`);
         const delCb = document.querySelector(`input[data-mgr="${managerId}"][data-tab="${tab.key}"][data-subtab=""][data-action="delete"]`);
+        const expCb = document.querySelector(`input[data-mgr="${managerId}"][data-tab="${tab.key}"][data-subtab=""][data-action="export"]`);
         const body = {
             module_name: moduleName,
             tab_key: tab.key,
@@ -4132,7 +4139,8 @@ async function saveAllPermissions(managerId, moduleName) {
             can_view: viewCb && viewCb.checked ? 1 : 0,
             can_add: addCb && addCb.checked ? 1 : 0,
             can_edit: editCb && editCb.checked ? 1 : 0,
-            can_delete: delCb && delCb.checked ? 1 : 0
+            can_delete: delCb && delCb.checked ? 1 : 0,
+            can_export: expCb && expCb.checked ? 1 : 0
         };
         await fetch(`${API_BASE}/module-tab-permissions/${managerId}`, {
             method: 'POST',
@@ -4146,6 +4154,7 @@ async function saveAllPermissions(managerId, moduleName) {
                 const sAddCb = document.querySelector(`input[data-mgr="${managerId}"][data-tab="${tab.key}"][data-subtab="${sub.key}"][data-action="add"]`);
                 const sEditCb = document.querySelector(`input[data-mgr="${managerId}"][data-tab="${tab.key}"][data-subtab="${sub.key}"][data-action="edit"]`);
                 const sDelCb = document.querySelector(`input[data-mgr="${managerId}"][data-tab="${tab.key}"][data-subtab="${sub.key}"][data-action="delete"]`);
+                const sExpCb = document.querySelector(`input[data-mgr="${managerId}"][data-tab="${tab.key}"][data-subtab="${sub.key}"][data-action="export"]`);
                 const sBody = {
                     module_name: moduleName,
                     tab_key: tab.key,
@@ -4153,7 +4162,8 @@ async function saveAllPermissions(managerId, moduleName) {
                     can_view: sViewCb && sViewCb.checked ? 1 : 0,
                     can_add: sAddCb && sAddCb.checked ? 1 : 0,
                     can_edit: sEditCb && sEditCb.checked ? 1 : 0,
-                    can_delete: sDelCb && sDelCb.checked ? 1 : 0
+                    can_delete: sDelCb && sDelCb.checked ? 1 : 0,
+                    can_export: sExpCb && sExpCb.checked ? 1 : 0
                 };
                 await fetch(`${API_BASE}/module-tab-permissions/${managerId}`, {
                     method: 'POST',
@@ -4178,6 +4188,7 @@ async function toggleTabPermission(managerId, moduleName, tabKey, subtabKey, act
         else if (action === 'add') body.can_add = checked ? 1 : 0;
         else if (action === 'edit') body.can_edit = checked ? 1 : 0;
         else if (action === 'delete') body.can_delete = checked ? 1 : 0;
+        else if (action === 'export') body.can_export = checked ? 1 : 0;
 
         const response = await fetch(`${API_BASE}/module-tab-permissions/${managerId}`, {
             method: 'POST',
@@ -4292,14 +4303,14 @@ async function createNewManager() {
                 await fetch(`${API_BASE}/module-tab-permissions/${newManagerId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ module_name, tab_key: tab.key, subtab_key: '', can_view: 1, can_add: 1, can_edit: 0, can_delete: 0 })
+                    body: JSON.stringify({ module_name, tab_key: tab.key, subtab_key: '', can_view: 1, can_add: 1, can_edit: 0, can_delete: 0, can_export: 1 })
                 });
                 if (tab.subtabs) {
                     for (const sub of tab.subtabs) {
                         await fetch(`${API_BASE}/module-tab-permissions/${newManagerId}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ module_name, tab_key: tab.key, subtab_key: sub.key, can_view: 1, can_add: 1, can_edit: 0, can_delete: 0 })
+                            body: JSON.stringify({ module_name, tab_key: tab.key, subtab_key: sub.key, can_view: 1, can_add: 1, can_edit: 0, can_delete: 0, can_export: 1 })
                         });
                     }
                 }

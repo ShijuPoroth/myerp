@@ -163,7 +163,7 @@ const HR_TABLE_TO_TAB = {
 function checkModulePermission(managerId, tableName, action, callback) {
   if (!managerId) return callback(null, false);
   const map = HR_TABLE_TO_TAB[tableName] || { tab: tableName, subtab: '' };
-  const field = action === 'add' ? 'can_add' : action === 'delete' ? 'can_delete' : 'can_edit';
+  const field = action === 'add' ? 'can_add' : action === 'delete' ? 'can_delete' : action === 'export' ? 'can_export' : 'can_edit';
   const permSql = `SELECT ${field} AS allowed FROM module_tab_permissions WHERE module_manager_id = ? AND module_name = 'hr' AND tab_key = ? AND subtab_key = ?`;
   const scanSubtabs = () => db.get(
     `SELECT 1 AS allowed FROM module_tab_permissions WHERE module_manager_id = ? AND module_name = 'hr' AND tab_key = ? AND subtab_key != '' AND ${field} = 1 LIMIT 1`,
@@ -178,10 +178,10 @@ function checkModulePermission(managerId, tableName, action, callback) {
       if (map.subtab) return callback(null, !!row.allowed); // subtab verdict is terminal
       return verdict(row);
     }
-    if (!map.subtab) return callback(null, action === 'add'); // nothing configured
+    if (!map.subtab) return callback(null, action === 'add' || action === 'export'); // nothing configured
     db.get(permSql, [managerId, map.tab, ''], (err2, parent) => {
       if (err2) return callback(err2, false);
-      if (!parent) return callback(null, action === 'add');
+      if (!parent) return callback(null, action === 'add' || action === 'export');
       verdict(parent);
     });
   });

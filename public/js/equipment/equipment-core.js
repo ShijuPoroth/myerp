@@ -396,6 +396,10 @@ function downloadEquipmentCSVTemplate() {
 }
 
 function exportEquipmentCSV() {
+    if (typeof hasTablePermission === 'function' && !hasTablePermission('equipment', 'export')) {
+        alert('You do not have permission to export.');
+        return;
+    }
     const filtered = getFilteredEquipment();
     const visibility = (typeof getEquipmentColumnVisibility === 'function') ? getEquipmentColumnVisibility() : null;
     const columns = (typeof EQUIPMENT_COLUMNS !== 'undefined') ? EQUIPMENT_COLUMNS : [
@@ -433,6 +437,10 @@ function exportEquipmentCSV() {
 }
 
 async function exportEquipmentExcel() {
+    if (typeof hasTablePermission === 'function' && !hasTablePermission('equipment', 'export')) {
+        alert('You do not have permission to export.');
+        return;
+    }
     const filtered = getFilteredEquipment();
     if (filtered.length === 0) {
         alert('No equipment to export.');
@@ -482,6 +490,10 @@ async function exportEquipmentExcel() {
 }
 
 function exportEquipmentPDF() {
+    if (typeof hasTablePermission === 'function' && !hasTablePermission('equipment', 'export')) {
+        alert('You do not have permission to export.');
+        return;
+    }
     const filtered = getFilteredEquipment();
     const visibility = (typeof getEquipmentColumnVisibility === 'function') ? getEquipmentColumnVisibility() : null;
     const columns = (typeof EQUIPMENT_COLUMNS !== 'undefined') ? EQUIPMENT_COLUMNS : [

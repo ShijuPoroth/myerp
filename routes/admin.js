@@ -1158,7 +1158,7 @@ router.get('/module-tab-permissions/:managerId', (req, res) => {
 });
 
 router.post('/module-tab-permissions/:managerId', requireAdmin, (req, res) => {
-  const { module_name, tab_key, subtab_key, can_view, can_add, can_edit, can_delete } = req.body;
+  const { module_name, tab_key, subtab_key, can_view, can_add, can_edit, can_delete, can_export } = req.body;
   const managerId = req.params.managerId;
   if (!module_name || !tab_key) {
     res.status(400).json({ error: 'module_name and tab_key are required' });
@@ -1173,8 +1173,9 @@ router.post('/module-tab-permissions/:managerId', requireAdmin, (req, res) => {
     const addVal = can_add !== undefined ? (can_add ? 1 : 0) : (row.can_add !== undefined ? row.can_add : 1);
     const editVal = can_edit !== undefined ? (can_edit ? 1 : 0) : (row.can_edit !== undefined ? row.can_edit : 0);
     const deleteVal = can_delete !== undefined ? (can_delete ? 1 : 0) : (row.can_delete !== undefined ? row.can_delete : 0);
-    db.run('UPDATE module_tab_permissions SET can_view = ?, can_add = ?, can_edit = ?, can_delete = ? WHERE id = ?',
-      [viewVal, addVal, editVal, deleteVal, row.id],
+    const exportVal = can_export !== undefined ? (can_export ? 1 : 0) : (row.can_export !== undefined ? row.can_export : 1);
+    db.run('UPDATE module_tab_permissions SET can_view = ?, can_add = ?, can_edit = ?, can_delete = ?, can_export = ? WHERE id = ?',
+      [viewVal, addVal, editVal, deleteVal, exportVal, row.id],
       function(err) {
         if (err) {
           res.status(500).json({ error: err.message });

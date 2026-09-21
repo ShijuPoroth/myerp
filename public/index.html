@@ -241,16 +241,16 @@
                                     <i class="fas fa-plus mr-1"></i> Add Equipment
                                 </button>
                                 <input type="file" id="equipment-csv-import" accept=".csv" class="hidden" onchange="importEquipmentCSV(this)">
-                                <button onclick="document.getElementById('equipment-csv-import').click()" class="bg-green-600 text-white px-3 py-1.5 text-sm rounded hover:bg-green-700 transition whitespace-nowrap">
+                                <button onclick="document.getElementById('equipment-csv-import').click()" data-permission="equipment:add" class="bg-green-600 text-white px-3 py-1.5 text-sm rounded hover:bg-green-700 transition whitespace-nowrap">
                                     <i class="fas fa-file-csv mr-1"></i> Import CSV
                                 </button>
-                                <button onclick="exportEquipmentCSV()" class="bg-purple-600 text-white px-3 py-1.5 text-sm rounded hover:bg-purple-700 transition whitespace-nowrap">
+                                <button onclick="exportEquipmentCSV()" data-permission="equipment:export" class="bg-purple-600 text-white px-3 py-1.5 text-sm rounded hover:bg-purple-700 transition whitespace-nowrap">
                                     <i class="fas fa-download mr-1"></i> Export CSV
                                 </button>
-                                <button onclick="exportEquipmentExcel()" class="bg-green-600 text-white px-3 py-1.5 text-sm rounded hover:bg-green-700 transition whitespace-nowrap">
+                                <button onclick="exportEquipmentExcel()" data-permission="equipment:export" class="bg-green-600 text-white px-3 py-1.5 text-sm rounded hover:bg-green-700 transition whitespace-nowrap">
                                     <i class="fas fa-file-excel mr-1"></i> Export Excel
                                 </button>
-                                <button onclick="exportEquipmentPDF()" class="bg-red-600 text-white px-3 py-1.5 text-sm rounded hover:bg-red-700 transition whitespace-nowrap">
+                                <button onclick="exportEquipmentPDF()" data-permission="equipment:export" class="bg-red-600 text-white px-3 py-1.5 text-sm rounded hover:bg-red-700 transition whitespace-nowrap">
                                     <i class="fas fa-file-pdf mr-1"></i> Export PDF
                                 </button>
                                 <button onclick="downloadEquipmentCSVTemplate()" class="bg-gray-600 text-white px-3 py-1.5 text-sm rounded hover:bg-gray-700 transition whitespace-nowrap">
@@ -3510,14 +3510,14 @@
     <script src="js/developer-info.js?v=1"></script>
     <script src="js/config.js?v=12"></script>
     <script src="js/utils.js?v=36"></script>
-    <script src="js/auth.js?v=19"></script>
+    <script src="js/auth.js?v=21"></script>
     <script src="js/navigation.js?v=54"></script>
     <script src="js/event-dispatcher.js?v=1"></script>
     <script src="js/catering/catering.js?v=15"></script>
     <script src="js/warehouse-management.js?v=1"></script>
     <script src="js/dashboard.js?v=53"></script>
     <script src="js/locations.js?v=11"></script>
-    <script src="js/equipment/equipment-core.js?v=123"></script>
+    <script src="js/equipment/equipment-core.js?v=124"></script>
     <script src="js/equipment/equipment-transfers.js?v=17"></script>
     <script src="js/equipment/equipment-maintenance.js?v=46"></script>
     <script src="js/equipment/equipment-spare-parts.js?v=18"></script>
@@ -3535,7 +3535,7 @@
     <script src="js/payment-management/payment-management-advance.js?v=4"></script>
     <script src="js/payment-management/payment-management-payslip.js?v=17"></script>
     <script src="js/payment-management/payment-management-history.js?v=6"></script>
-    <script src="js/admin-settings.js?v=71"></script>
+    <script src="js/admin-settings.js?v=73"></script>
     <script src="js/admin-settings-hr/admin-settings-hr-main.js?v=2"></script>
     <script src="js/admin-settings-hr/admin-settings-hr-positions.js?v=3"></script>
     <script src="js/admin-settings-hr/admin-settings-hr-departments.js?v=4"></script>

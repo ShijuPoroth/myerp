@@ -62,11 +62,12 @@ const EQUIPMENT_TABLE_TO_TAB = {
 function checkModulePermission(managerId, tableName, action, callback) {
   if (!managerId) return callback(null, false);
   const tabKey = EQUIPMENT_TABLE_TO_TAB[tableName] || tableName;
-  const field = action === 'add' ? 'can_add' : action === 'delete' ? 'can_delete' : 'can_edit';
+  const field = action === 'add' ? 'can_add' : action === 'delete' ? 'can_delete' : action === 'export' ? 'can_export' : 'can_edit';
   db.get(`SELECT ${field} AS allowed FROM module_tab_permissions WHERE module_manager_id = ? AND module_name = 'equipment' AND tab_key = ? AND subtab_key = ''`,
     [managerId, tabKey], (err, row) => {
       if (err) return callback(err, false);
-      if (!row) return callback(null, action === 'add');
+      // No row = frontend default: add/export allowed until configured, edit/delete denied
+      if (!row) return callback(null, action === 'add' || action === 'export');
       callback(null, !!row.allowed);
     });
 }
@@ -1330,7 +1331,7 @@ function parseCSV(text) {
   return rows;
 }
 
-router.post('/import-csv', upload.single('csv'), (req, res) => {
+router.post('/import-csv', requireModulePermission('equipment', 'add'), upload.single('csv'), (req, res) => {
   if (!req.file) {
     res.status(400).json({ error: 'No CSV file uploaded' });
     return;
@@ -1503,7 +1504,7 @@ router.get('/export-template', (req, res) => {
   res.send(csv);
 });
 
-router.get('/export-csv', (req, res) => {
+router.get('/export-csv', requireModulePermission('equipment', 'export'), (req, res) => {
   const { search, status, country, location, sublocation, owner, assignedTo } = req.query;
   const searchLower = search ? String(search).toLowerCase() : '';
 
@@ -3581,7 +3582,7 @@ router.post('/returns/:id/reject', (req, res) => {
 });
 
 // Export equipment to Excel with embedded images
-router.post('/export-xlsx', async (req, res) => {
+router.post('/export-xlsx', requireModulePermission('equipment', 'export'), async (req, res) => {
   const { equipmentIds, columns, filterCriteria } = req.body;
 
   if (!Array.isArray(equipmentIds) || equipmentIds.length === 0) {

@@ -86,7 +86,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     can_view: p.can_view,
                     can_add: p.can_add,
                     can_edit: p.can_edit,
-                    can_delete: p.can_delete
+                    can_delete: p.can_delete,
+                    can_export: p.can_export !== undefined ? p.can_export : 1
                 };
             });
             console.log('[AUTH-FIX] moduleTabPermissions loaded with', Object.keys(moduleTabPermissions).length, 'entries');
@@ -108,6 +109,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const key = mod + '::' + tab + '::' + subtab;
                 const perm = moduleTabPermissions[key];
                 if (perm && typeof perm === 'object') {
+                    // can_export may be absent on rows loaded before the column existed — default allowed
+                    if (act === 'can_export' && perm[act] === undefined) return true;
                     console.log('[AUTH-FIX] hasTablePermission', tableName, action, '->', !!perm[act], 'key:', key, 'perm:', JSON.stringify(perm));
                     return !!perm[act];
                 }

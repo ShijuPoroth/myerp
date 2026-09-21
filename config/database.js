@@ -1555,6 +1555,7 @@ function initializeDatabase() {
       can_add INTEGER DEFAULT 1,
       can_edit INTEGER DEFAULT 0,
       can_delete INTEGER DEFAULT 0,
+      can_export INTEGER DEFAULT 1,
       UNIQUE(module_manager_id, module_name, tab_key, subtab_key),
       FOREIGN KEY (module_manager_id) REFERENCES module_managers(id) ON DELETE CASCADE
     )`, (err) => {
@@ -1566,6 +1567,10 @@ function initializeDatabase() {
           db.run(`ALTER TABLE module_tab_permissions ADD COLUMN ${col} INTEGER DEFAULT 0`, (e) => {
             if (e && !e.message.includes('duplicate column')) console.error(`Migration ${col}:`, e.message);
           });
+        });
+        // Export defaults to allowed to preserve existing behavior
+        db.run(`ALTER TABLE module_tab_permissions ADD COLUMN can_export INTEGER DEFAULT 1`, (e) => {
+          if (e && !e.message.includes('duplicate column')) console.error('Migration can_export:', e.message);
         });
       }
     });
