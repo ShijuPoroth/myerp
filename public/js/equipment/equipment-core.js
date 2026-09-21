@@ -1634,7 +1634,8 @@ function openPhotoLightbox(src, photos) {
     function render() {
         lb.innerHTML = `
             <div class="relative flex items-center justify-center w-full h-full">
-                <img src="${photoList[currentIndex]}" class="max-w-[90vw] max-h-[90vh] object-contain rounded shadow-2xl">
+                <div id="lightbox-spinner" class="absolute inset-0 flex items-center justify-center"><div class="animate-spin rounded-full h-10 w-10 border-4 border-white border-opacity-30 border-t-white"></div></div>
+                <img src="${photoList[currentIndex]}" class="max-w-[90vw] max-h-[90vh] object-contain rounded shadow-2xl" style="visibility:hidden">
                 ${photoList.length > 1 ? `
                     <button id="lightbox-prev" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-40 text-white rounded-full w-12 h-12 flex items-center justify-center text-2xl transition">&lsaquo;</button>
                     <button id="lightbox-next" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-40 text-white rounded-full w-12 h-12 flex items-center justify-center text-2xl transition">&rsaquo;</button>
@@ -1643,6 +1644,12 @@ function openPhotoLightbox(src, photos) {
                 <button id="lightbox-close" class="absolute top-4 right-4 bg-white bg-opacity-20 hover:bg-opacity-40 text-white rounded-full w-10 h-10 flex items-center justify-center text-xl transition">&times;</button>
             </div>
         `;
+        const lbImg = lb.querySelector('img');
+        const lbSpinner = document.getElementById('lightbox-spinner');
+        const showImg = () => { lbImg.style.visibility = 'visible'; if (lbSpinner) lbSpinner.style.display = 'none'; };
+        lbImg.onload = showImg;
+        lbImg.onerror = () => { if (lbSpinner) lbSpinner.innerHTML = '<span class="text-gray-300 text-sm">Could not load image</span>'; };
+        if (lbImg.complete && lbImg.naturalWidth > 0) showImg();
         const prevBtn = document.getElementById('lightbox-prev');
         const nextBtn = document.getElementById('lightbox-next');
         const closeBtn = document.getElementById('lightbox-close');

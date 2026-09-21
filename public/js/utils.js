@@ -472,3 +472,52 @@ function showTableError(tbodyId, message) {
     const colCount = tbody.closest('table')?.querySelectorAll('thead th')?.length || 10;
     tbody.innerHTML = `<tr><td colspan="${colCount}" class="text-center py-8 text-red-500 text-sm"><i class="fas fa-exclamation-circle mr-2"></i>${msg}</td></tr>`;
 }
+
+// ==================== GLOBAL ACTION LOADER ====================
+// Shows a blocking spinner overlay whenever any API call is in flight,
+// so clicks get immediate visual feedback and can't be repeated while
+// a request is running (matters on slow/tunnel connections).
+(function () {
+    let pendingCount = 0;
+    let showTimer = null;
+    let loaderEl = null;
+
+    function ensureLoader() {
+        if (loaderEl && document.body.contains(loaderEl)) return loaderEl;
+        const style = document.createElement('style');
+        style.textContent = '@keyframes gflSpin{to{transform:rotate(360deg)}}';
+        document.head.appendChild(style);
+        loaderEl = document.createElement('div');
+        loaderEl.id = 'global-fetch-loader';
+        loaderEl.style.cssText = 'position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,0.45);';
+        loaderEl.innerHTML =
+            '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;background:rgba(255,255,255,0.95);border-radius:12px;padding:22px 32px;box-shadow:0 10px 30px rgba(0,0,0,0.15);">' +
+                '<div style="width:40px;height:40px;border:4px solid #bfdbfe;border-top-color:#2563eb;border-radius:50%;animation:gflSpin 0.8s linear infinite;"></div>' +
+                '<span style="color:#374151;font-size:13px;font-weight:500;">Please wait...</span>' +
+            '</div>';
+        document.body.appendChild(loaderEl);
+        return loaderEl;
+    }
+
+    function showLoader() {
+        clearTimeout(showTimer);
+        showTimer = setTimeout(() => {
+            if (pendingCount > 0) ensureLoader().style.display = 'flex';
+        }, 250); // debounce: skip flicker on fast requests
+    }
+
+    function hideLoader() {
+        clearTimeout(showTimer);
+        if (loaderEl) loaderEl.style.display = 'none';
+    }
+
+    const origFetch = window.fetch.bind(window);
+    window.fetch = function () {
+        pendingCount++;
+        showLoader();
+        return origFetch.apply(null, arguments).finally(() => {
+            pendingCount = Math.max(0, pendingCount - 1);
+            if (pendingCount === 0) hideLoader();
+        });
+    };
+})();
