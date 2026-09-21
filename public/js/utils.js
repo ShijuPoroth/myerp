@@ -523,9 +523,27 @@ function showTableError(tbodyId, message) {
     window.fetch = function () {
         pendingCount++;
         showLoader();
-        return origFetch.apply(null, arguments).finally(() => {
-            pendingCount = Math.max(0, pendingCount - 1);
-            if (pendingCount === 0) hideLoader();
-        });
+        return origFetch.apply(null, arguments)
+            .then(response => {
+                // fetch resolves on headers - wrap body readers so the loader
+                // stays up until the response body is actually consumed
+                ['json', 'text', 'blob', 'arrayBuffer', 'formData'].forEach(m => {
+                    const orig = response[m];
+                    if (typeof orig !== 'function') return;
+                    response[m] = function () {
+                        pendingCount++;
+                        showLoader();
+                        return orig.apply(response, arguments).finally(() => {
+                            pendingCount = Math.max(0, pendingCount - 1);
+                            if (pendingCount === 0) hideLoader();
+                        });
+                    };
+                });
+                return response;
+            })
+            .finally(() => {
+                pendingCount = Math.max(0, pendingCount - 1);
+                if (pendingCount === 0) hideLoader();
+            });
     };
 })();
