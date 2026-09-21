@@ -457,13 +457,10 @@ function populateFreezeSelect(selectId, columns, storageKey, tableSelector) {
 }
 
 // ==================== TABLE LOADING SPINNER ====================
-function showTableLoading(tbodyId, message) {
-    const tbody = document.getElementById(tbodyId);
-    if (!tbody) return;
-    const msg = message || 'Loading...';
-    const colCount = tbody.closest('table')?.querySelectorAll('thead th')?.length || 10;
-    tbody.innerHTML = `<tr><td colspan="${colCount}" class="text-center py-12"><div class="inline-flex flex-col items-center gap-3"><div class="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div><span class="text-gray-500 text-sm">${msg}</span></div></td></tr>`;
-}
+// No-op: the global fetch loader (below) is now the single loading
+// indicator for every page/action, so per-table spinners are disabled
+// to avoid showing two spinners at once.
+function showTableLoading(tbodyId, message) {}
 
 function showTableError(tbodyId, message) {
     const tbody = document.getElementById(tbodyId);
