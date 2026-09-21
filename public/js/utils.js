@@ -485,15 +485,14 @@ function showTableError(tbodyId, message) {
 
     function ensureLoader() {
         if (loaderEl && document.body.contains(loaderEl)) return loaderEl;
-        const style = document.createElement('style');
-        style.textContent = '@keyframes gflSpin{to{transform:rotate(360deg)}}';
-        document.head.appendChild(style);
         loaderEl = document.createElement('div');
         loaderEl.id = 'global-fetch-loader';
         loaderEl.style.cssText = 'position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,0.45);';
+        // Uses the animate-spin class from the static Tailwind stylesheet —
+        // CSP blocks injected <style> elements, so custom keyframes won't work
         loaderEl.innerHTML =
             '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;background:rgba(255,255,255,0.95);border-radius:12px;padding:22px 32px;box-shadow:0 10px 30px rgba(0,0,0,0.15);">' +
-                '<div style="width:40px;height:40px;border:4px solid #bfdbfe;border-top-color:#2563eb;border-radius:50%;animation:gflSpin 0.8s linear infinite;"></div>' +
+                '<div class="animate-spin" style="width:40px;height:40px;border:4px solid #bfdbfe;border-top-color:#2563eb;border-radius:50%;"></div>' +
                 '<span style="color:#374151;font-size:13px;font-weight:500;">Please wait...</span>' +
             '</div>';
         document.body.appendChild(loaderEl);
