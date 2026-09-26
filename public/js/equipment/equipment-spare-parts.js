@@ -644,7 +644,7 @@ function printSparePartHistory() {
         + '<div class="doc-header">'
         + '<div class="logo-block">'
         + '<img src="/company-logo/company-logo.png" alt="Company Logo" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\';">'
-        + '<div class="logo-fallback">[Company Logo]<br><span style="font-size:10px;">Place company-logo.png in public/company-logo/</span></div>'
+        + '<div class="logo-fallback" style="display:none;">[Company Logo]<br><span style="font-size:10px;">Place company-logo.png in public/company-logo/</span></div>'
         + '</div>'
         + '<div class="title-block"><h1>Spare Part History</h1><p>Transaction Report</p></div>'
         + '<div class="doc-id"><div class="id-label">Generated On</div><div class="id-value">' + today + '</div></div>'
