@@ -1326,6 +1326,41 @@ router.put('/column-visibility/:managerId', requireAdmin, (req, res) => {
   });
 });
 
+// ACCESS CONTROL BUNDLE - everything the Access Control page needs in one request
+router.get('/access-control-data', requireAdmin, (req, res) => {
+  const queries = {
+    managers: ['SELECT id, name, module_name, login_id, created_at FROM module_managers ORDER BY name', []],
+    tabPermissions: ['SELECT * FROM module_tab_permissions', []],
+    locationFilters: ['SELECT module_manager_id, location_id FROM module_manager_location_filters', []],
+    ownerFilters: ['SELECT module_manager_id, owner_id FROM module_manager_owner_filters', []],
+    columnVisibility: ['SELECT module_manager_id, tab_key, column_key, is_visible FROM module_manager_column_visibility', []],
+    businessTypeAssignments: [`SELECT bta.*, c.name as country_name, lt.name as location_name, slt.name as sub_location_name, bt.name as business_type_name
+         FROM business_type_assignments bta
+         LEFT JOIN countries c ON bta.country_id = c.id
+         LEFT JOIN location_types lt ON bta.location_id = lt.id
+         LEFT JOIN sub_location_types slt ON bta.sub_location_id = slt.id
+         LEFT JOIN business_types bt ON bta.business_type_id = bt.id
+         ORDER BY bta.id`, []],
+    owners: ['SELECT * FROM equipment_owners ORDER BY name', []]
+  };
+  const keys = Object.keys(queries);
+  const result = {};
+  let done = 0;
+  let failed = false;
+  keys.forEach(k => {
+    db.all(queries[k][0], queries[k][1], (err, rows) => {
+      if (failed) return;
+      if (err) {
+        failed = true;
+        res.status(500).json({ error: err.message });
+        return;
+      }
+      result[k] = rows;
+      if (++done === keys.length) res.json(result);
+    });
+  });
+});
+
 // Get items filtered as equipment (items that have equipment records via catalog_id)
 router.get('/equipment-items', (req, res) => {
   db.all(`SELECT DISTINCT i.*, ic.name as category_name, isc.name as subcategory_name, it.name as type_name, iu.name as unit_name

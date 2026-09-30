@@ -3840,30 +3840,50 @@ async function renderAccessControl() {
     const token = ++_renderAccessControlToken;
     container.innerHTML = ''; // global fetch loader covers the loading state
 
-    // Shared lists are fetched once, not per-manager
-    const hasEquipmentManager = allModuleManagers.some(m => m.module_name === 'equipment');
-    const [btaList, ownerList] = hasEquipmentManager ? await Promise.all([
-        fetch(`${API_BASE}/business-type-assignments`).then(r => r.json()).catch(() => []),
-        fetch(`${API_BASE}/equipment/owners`).then(r => r.json()).catch(() => [])
-    ]) : [[], []];
+    // One request returns every table the page needs (bundle endpoint)
+    const bundle = await fetch(`${API_BASE}/access-control-data`).then(r => r.json()).catch(() => null);
     if (token !== _renderAccessControlToken) return; // abort if superseded
+    if (!bundle || bundle.error) {
+        container.innerHTML = '<div class="text-center py-8 text-red-500 text-sm"><i class="fas fa-exclamation-circle mr-2"></i>Error loading access control. Please try again.</div>';
+        return;
+    }
 
-    // Build every manager card in parallel
-    const cards = await Promise.all(allModuleManagers.map(manager => buildAccessControlCard(manager, btaList, ownerList)));
-    if (token !== _renderAccessControlToken) return;
+    // Group rows by manager
+    const tabPermsByMgr = {};
+    (bundle.tabPermissions || []).forEach(p => { (tabPermsByMgr[p.module_manager_id] = tabPermsByMgr[p.module_manager_id] || []).push(p); });
+    const locByMgr = {};
+    (bundle.locationFilters || []).forEach(r => { (locByMgr[r.module_manager_id] = locByMgr[r.module_manager_id] || []).push(r.location_id); });
+    const ownerByMgr = {};
+    (bundle.ownerFilters || []).forEach(r => { (ownerByMgr[r.module_manager_id] = ownerByMgr[r.module_manager_id] || []).push(r.owner_id); });
+    const colVisByMgr = {};
+    (bundle.columnVisibility || []).forEach(r => {
+        const m = colVisByMgr[r.module_manager_id] = colVisByMgr[r.module_manager_id] || {};
+        (m[r.tab_key] = m[r.tab_key] || []).push(r);
+    });
 
     const grid = document.createElement('div');
     grid.className = 'grid grid-cols-2 gap-4';
-    cards.forEach(card => { if (card) grid.appendChild(card); });
+    allModuleManagers.forEach(manager => {
+        const card = buildAccessControlCard(manager, {
+            tabPerms: tabPermsByMgr[manager.id] || [],
+            allowedIds: locByMgr[manager.id] || [],
+            allowedOwnerIds: ownerByMgr[manager.id] || [],
+            colVisByTab: colVisByMgr[manager.id] || {},
+            btaList: bundle.businessTypeAssignments || [],
+            ownerList: bundle.owners || []
+        });
+        if (card) grid.appendChild(card);
+    });
     container.innerHTML = '';
     container.appendChild(grid);
 }
 
-async function buildAccessControlCard(manager, btaList, ownerList) {
+function buildAccessControlCard(manager, data) {
     const tabs = MODULE_TABS[manager.module_name] || [];
     const isEquipment = manager.module_name === 'equipment';
+    const { tabPerms, allowedIds, allowedOwnerIds, colVisByTab, btaList, ownerList } = data;
 
-    // Collect column-visibility targets (tab + subtab keys) to fetch in one batch
+    // Collect column-visibility targets (tab + subtab keys)
     const colVisTargets = [];
     tabs.forEach(tab => {
         if (TAB_COLUMNS[tab.key] && TAB_COLUMNS[tab.key].columns.length > 0) {
@@ -3877,16 +3897,6 @@ async function buildAccessControlCard(manager, btaList, ownerList) {
             });
         }
     });
-
-    // All per-manager data fetches run in parallel - one round-trip of latency total
-    const [tabPerms, allowedIds, allowedOwnerIds, colVisLists] = await Promise.all([
-        fetch(`${API_BASE}/module-tab-permissions/${manager.id}`).then(r => r.json()).catch(() => []),
-        isEquipment ? loadManagerLocationFilters(manager.id).catch(() => []) : Promise.resolve([]),
-        isEquipment ? loadManagerOwnerFilters(manager.id).catch(() => []) : Promise.resolve([]),
-        Promise.all(colVisTargets.map(t =>
-            fetch(`${API_BASE}/column-visibility/${manager.id}?tab_key=${t.key}`).then(r => r.json()).catch(() => [])
-        ))
-    ]);
 
         const tabPermMap = {};
         tabPerms.forEach(p => {
@@ -3989,9 +3999,9 @@ async function buildAccessControlCard(manager, btaList, ownerList) {
                 </div>`;
         }
 
-        // Generic column visibility controls - data was already fetched in one parallel batch
+        // Generic column visibility controls - data came with the bundle
         colVisTargets.forEach((tc, i) => {
-            const colList = colVisLists[i] || [];
+            const colList = colVisByTab[tc.key] || [];
             const colMap = {};
             colList.forEach(c => { colMap[c.column_key] = c.is_visible; });
             const colRows = tc.columns.map(col => {
