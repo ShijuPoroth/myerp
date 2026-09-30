@@ -1069,13 +1069,16 @@ function populateMaintenancePartOptions(wrapper, parts) {
             ? `<img src="${part.photo_path}" class="w-10 h-10 rounded object-cover flex-shrink-0 border">`
             : `<div class="w-10 h-10 rounded bg-gray-100 flex items-center justify-center flex-shrink-0 border text-gray-400"><i class="fas fa-image text-xs"></i></div>`;
         const partNum = part.part_number || part.spare_part_serial_number || 'No Part #';
+        const autoSerial = part.spare_part_serial_number || '';
+        const physSerial = part.part_serial_number ? `SN: ${part.part_serial_number}` : '';
         const brand = part.brand ? ` · ${part.brand}` : '';
         const spec = part.specification ? ` · ${part.specification}` : '';
-        return `<div class="maintenance-part-option flex items-center gap-2 px-3 py-2 hover:bg-blue-50 cursor-pointer border-b" onclick="selectMaintenancePart(this, ${part.id}, '${part.name.replace(/'/g, "\\'")}', '${partNum.replace(/'/g, "\\'")}', ${part.unit_cost || 0}, ${part.quantity || 0}, '${part.photo_path || ''}')" data-search="${(part.name + ' ' + partNum + ' ' + (part.brand || '') + ' ' + (part.specification || '')).toLowerCase()}">
+        const serialLine = [autoSerial, physSerial].filter(Boolean).join(' · ');
+        return `<div class="maintenance-part-option flex items-center gap-2 px-3 py-2 hover:bg-blue-50 cursor-pointer border-b" onclick="selectMaintenancePart(this, ${part.id}, '${part.name.replace(/'/g, "\\'")}', '${serialLine.replace(/'/g, "\\'")}', ${part.unit_cost || 0}, ${part.quantity || 0}, '${part.photo_path || ''}')" data-search="${(part.name + ' ' + partNum + ' ' + autoSerial + ' ' + (part.part_serial_number || '') + ' ' + (part.brand || '') + ' ' + (part.specification || '')).toLowerCase()}">
             ${photoHtml}
             <div class="flex-1 min-w-0">
                 <div class="text-sm font-medium text-gray-800 truncate">${part.name}</div>
-                <div class="text-xs text-gray-500 truncate">${partNum}${brand}${spec} · Qty: ${part.quantity || 0} · $${part.unit_cost || 0}</div>
+                <div class="text-xs text-gray-500 truncate">${serialLine}${brand}${spec} · Qty: ${part.quantity || 0} · $${part.unit_cost || 0}</div>
             </div>
         </div>`;
     }).join('');
@@ -1086,7 +1089,8 @@ function populateMaintenancePartOptions(wrapper, parts) {
             const photoHtml = selectedPart.photo_path
                 ? `<img src="${selectedPart.photo_path}" class="w-6 h-6 rounded object-cover flex-shrink-0">`
                 : `<div class="w-6 h-6 rounded bg-gray-100 flex items-center justify-center flex-shrink-0 text-gray-400"><i class="fas fa-image text-xs"></i></div>`;
-            btn.innerHTML = `${photoHtml}<span class="text-sm text-gray-800 truncate">${selectedPart.name} (${selectedPart.part_number || selectedPart.spare_part_serial_number || 'No Part #'})</span>`;
+            const selSerial = [selectedPart.spare_part_serial_number, selectedPart.part_serial_number ? `SN: ${selectedPart.part_serial_number}` : ''].filter(Boolean).join(' · ') || 'No Part #';
+            btn.innerHTML = `${photoHtml}<span class="text-sm text-gray-800 truncate">${selectedPart.name} (${selSerial})</span>`;
         }
     }
 }

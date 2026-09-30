@@ -398,9 +398,10 @@
                                 </div>
                             </div>
                             <input type="number" class="maintenance-part-quantity w-24 px-3 py-2 border rounded-lg" placeholder="Qty" min="1">
-                            <button type="button" onclick="addMaintenancePartRow()" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">+</button>
+                            <button type="button" onclick="removeMaintenancePartRow(this)" class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">-</button>
                         </div>
                     </div>
+                    <button type="button" onclick="addMaintenancePartRow()" class="mt-2 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 whitespace-nowrap"><i class="fas fa-plus mr-1"></i>Add Part</button>
                 </div>
             </div>
             <div class="flex justify-end gap-4 mt-6">

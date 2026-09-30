@@ -2,7 +2,7 @@
 
 async function loadModals() {
     try {
-        const response = await fetch('partials/modals.html?v=34');
+        const response = await fetch('partials/modals.html?v=36');
         const html = await response.text();
         document.getElementById('modals-container').innerHTML = html;
         
