@@ -3879,8 +3879,10 @@ function buildAccessControlCard(manager, data) {
     const { tabPerms, allowedIds, allowedOwnerIds, colVisByTab, btaList, ownerList } = data;
 
     // Collect column-visibility targets (tab + subtab keys)
+    // Authorizer views are approval queues, not the configurable list tables -
+    // its 'equipment' tab key would otherwise collide with the equipment list columns.
     const colVisTargets = [];
-    tabs.forEach(tab => {
+    if (manager.module_name !== 'authorizer') tabs.forEach(tab => {
         if (TAB_COLUMNS[tab.key] && TAB_COLUMNS[tab.key].columns.length > 0) {
             colVisTargets.push({ key: tab.key, label: TAB_COLUMNS[tab.key].label, columns: TAB_COLUMNS[tab.key].columns });
         }
