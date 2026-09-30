@@ -3974,7 +3974,11 @@ function buildAccessControlCard(manager, data) {
                     </div>
                     <div class="max-h-32 overflow-y-auto grid grid-cols-2 gap-x-3">${btaRows || '<span class="text-xs text-gray-400">No locations available</span>'}</div>
                 </div>`;
+        }
 
+        // Owner filter applies to equipment and authorizer managers (authorizer
+        // approval tables are filtered by equipment owner on the backend too)
+        if (isEquipment || manager.module_name === 'authorizer') {
             let ownerRows = '';
             try {
                 ownerList.forEach(o => {
