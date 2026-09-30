@@ -3715,18 +3715,9 @@ function reloadCurrentSection() {
 }
 
 async function loadModuleManagers() {
-    try {
-        const response = await fetch(`${API_BASE}/module-managers`);
-        const data = await response.json();
-        allModuleManagers = Array.isArray(data) ? data : [];
-        renderAccessControl();
-    } catch (error) {
-        console.error('Error loading module managers:', error);
-        const container = document.getElementById('access-control-modules-container');
-        if (container) {
-            container.innerHTML = '<div class="text-center py-8 text-red-500 text-sm"><i class="fas fa-exclamation-circle mr-2"></i>Error loading access control. Please try again.</div>';
-        }
-    }
+    // The bundle endpoint already returns the manager list - renderAccessControl
+    // populates allModuleManagers and the manager select as a side effect.
+    await renderAccessControl();
 }
 
 function populateModuleManagerSelect() {
@@ -3847,6 +3838,9 @@ async function renderAccessControl() {
         container.innerHTML = '<div class="text-center py-8 text-red-500 text-sm"><i class="fas fa-exclamation-circle mr-2"></i>Error loading access control. Please try again.</div>';
         return;
     }
+
+    allModuleManagers = bundle.managers || [];
+    populateModuleManagerSelect();
 
     // Group rows by manager
     const tabPermsByMgr = {};
@@ -4313,7 +4307,6 @@ async function createNewManager() {
             }
             closeAddManagerModal();
             await loadAccessControl();
-            renderAccessControl();
             alert('Manager created successfully with default permissions.');
         } else {
             alert('Error: ' + (data.error || 'Could not create manager.'));
@@ -4332,7 +4325,6 @@ async function deleteManager(managerId, managerName) {
         const data = await response.json();
         if (response.ok) {
             await loadAccessControl();
-            renderAccessControl();
             alert('Manager deleted.');
         } else {
             alert('Error: ' + (data.error || 'Could not delete manager.'));

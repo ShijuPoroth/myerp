@@ -155,7 +155,14 @@ app.use('/uploads', express.static('uploads', {
     res.setHeader('Cache-Control', 'private, no-cache');
   }
 }));
-app.use(express.static('public', { etag: false, lastModified: false, setHeaders: function(res) { res.setHeader('Cache-Control', 'no-store'); } }));
+app.use(express.static('public', {
+  etag: true,
+  setHeaders: function(res, filePath) {
+    // HTML revalidates each load so pages stay fresh; JS/CSS/images cache for a day
+    // (the ?v= query versions on every release bust this safely)
+    res.setHeader('Cache-Control', filePath.endsWith('.html') ? 'no-cache' : 'public, max-age=86400');
+  }
+}));
 
 // Client-side error logging endpoint (public, for debugging)
 app.post('/api/client-error', express.json({ limit: '1mb' }), (req, res) => {
