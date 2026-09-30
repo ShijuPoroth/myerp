@@ -3840,14 +3840,53 @@ async function renderAccessControl() {
     const token = ++_renderAccessControlToken;
     container.innerHTML = ''; // global fetch loader covers the loading state
 
+    // Shared lists are fetched once, not per-manager
+    const hasEquipmentManager = allModuleManagers.some(m => m.module_name === 'equipment');
+    const [btaList, ownerList] = hasEquipmentManager ? await Promise.all([
+        fetch(`${API_BASE}/business-type-assignments`).then(r => r.json()).catch(() => []),
+        fetch(`${API_BASE}/equipment/owners`).then(r => r.json()).catch(() => [])
+    ]) : [[], []];
+    if (token !== _renderAccessControlToken) return; // abort if superseded
+
+    // Build every manager card in parallel
+    const cards = await Promise.all(allModuleManagers.map(manager => buildAccessControlCard(manager, btaList, ownerList)));
+    if (token !== _renderAccessControlToken) return;
+
     const grid = document.createElement('div');
     grid.className = 'grid grid-cols-2 gap-4';
+    cards.forEach(card => { if (card) grid.appendChild(card); });
+    container.innerHTML = '';
+    container.appendChild(grid);
+}
 
-    for (const manager of allModuleManagers) {
-        if (token !== _renderAccessControlToken) return; // abort if superseded
-        const tabs = MODULE_TABS[manager.module_name] || [];
-        const tabRes = await fetch(`${API_BASE}/module-tab-permissions/${manager.id}`);
-        const tabPerms = await tabRes.json();
+async function buildAccessControlCard(manager, btaList, ownerList) {
+    const tabs = MODULE_TABS[manager.module_name] || [];
+    const isEquipment = manager.module_name === 'equipment';
+
+    // Collect column-visibility targets (tab + subtab keys) to fetch in one batch
+    const colVisTargets = [];
+    tabs.forEach(tab => {
+        if (TAB_COLUMNS[tab.key] && TAB_COLUMNS[tab.key].columns.length > 0) {
+            colVisTargets.push({ key: tab.key, label: TAB_COLUMNS[tab.key].label, columns: TAB_COLUMNS[tab.key].columns });
+        }
+        if (tab.subtabs) {
+            tab.subtabs.forEach(sub => {
+                if (TAB_COLUMNS[sub.key] && TAB_COLUMNS[sub.key].columns.length > 0) {
+                    colVisTargets.push({ key: sub.key, label: TAB_COLUMNS[sub.key].label, columns: TAB_COLUMNS[sub.key].columns });
+                }
+            });
+        }
+    });
+
+    // All per-manager data fetches run in parallel - one round-trip of latency total
+    const [tabPerms, allowedIds, allowedOwnerIds, colVisLists] = await Promise.all([
+        fetch(`${API_BASE}/module-tab-permissions/${manager.id}`).then(r => r.json()).catch(() => []),
+        isEquipment ? loadManagerLocationFilters(manager.id).catch(() => []) : Promise.resolve([]),
+        isEquipment ? loadManagerOwnerFilters(manager.id).catch(() => []) : Promise.resolve([]),
+        Promise.all(colVisTargets.map(t =>
+            fetch(`${API_BASE}/column-visibility/${manager.id}?tab_key=${t.key}`).then(r => r.json()).catch(() => [])
+        ))
+    ]);
 
         const tabPermMap = {};
         tabPerms.forEach(p => {
@@ -3907,13 +3946,9 @@ async function renderAccessControl() {
         let locationFilterHtml = '';
         let ownerFilterHtml = '';
         let columnVisibilityHtml = '';
-        if (manager.module_name === 'equipment') {
-            let allowedIds = [];
-            try { allowedIds = await loadManagerLocationFilters(manager.id); } catch(e) {}
+        if (isEquipment) {
             let btaRows = '';
             try {
-                const btaRes = await fetch(`${API_BASE}/business-type-assignments`);
-                const btaList = await btaRes.json();
                 btaList.forEach(bta => {
                     const label = [bta.country_name, bta.location_name, bta.sub_location_name, bta.business_type_name, bta.business_unit_code].filter(Boolean).join(' - ');
                     const checked = allowedIds.includes(bta.id) ? 'checked' : '';
@@ -3933,12 +3968,8 @@ async function renderAccessControl() {
                     <div class="max-h-32 overflow-y-auto grid grid-cols-2 gap-x-3">${btaRows || '<span class="text-xs text-gray-400">No locations available</span>'}</div>
                 </div>`;
 
-            let allowedOwnerIds = [];
-            try { allowedOwnerIds = await loadManagerOwnerFilters(manager.id); } catch(e) {}
             let ownerRows = '';
             try {
-                const ownerRes = await fetch(`${API_BASE}/equipment/owners`);
-                const ownerList = await ownerRes.json();
                 ownerList.forEach(o => {
                     const checked = allowedOwnerIds.includes(o.id) ? 'checked' : '';
                     ownerRows += `<label class="flex items-center gap-1.5 text-xs text-gray-600 py-0.5"><input type="checkbox" name="owner-filter-${manager.id}" value="${o.id}" ${checked}> ${o.name}</label>`;
@@ -3958,68 +3989,28 @@ async function renderAccessControl() {
                 </div>`;
         }
 
-        // Generic column visibility controls for all tabs/subtabs with columns defined
-        const modTabs = MODULE_TABS[manager.module_name] || [];
-        for (const tab of modTabs) {
-            // Check tab itself
-            if (TAB_COLUMNS[tab.key] && TAB_COLUMNS[tab.key].columns.length > 0) {
-                const tc = TAB_COLUMNS[tab.key];
-                let colRows = '';
-                try {
-                    const colRes = await fetch(`${API_BASE}/column-visibility/${manager.id}?tab_key=${tab.key}`);
-                    const colList = await colRes.json();
-                    const colMap = {};
-                    colList.forEach(c => { colMap[c.column_key] = c.is_visible; });
-                    colRows = tc.columns.map(col => {
-                        const isVisible = colMap[col.key] !== undefined ? colMap[col.key] : 1;
-                        return `<label class="flex items-center gap-1.5 text-xs text-gray-600 py-0.5"><input type="checkbox" name="col-vis-${manager.id}-${tab.key}" data-col-key="${col.key}" ${isVisible ? 'checked' : ''}> ${col.label}</label>`;
-                    }).join('');
-                } catch(e) {}
-                columnVisibilityHtml += `
-                <div class="px-3 py-2 border-t bg-gray-50">
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="text-xs font-semibold text-gray-600">${tc.label} Column Visibility</span>
-                        <div class="flex gap-1">
-                            <button onclick="toggleAllColumnVisibilityTab(${manager.id}, '${tab.key}', true)" class="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded hover:bg-gray-300">Select All</button>
-                            <button onclick="toggleAllColumnVisibilityTab(${manager.id}, '${tab.key}', false)" class="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded hover:bg-gray-300">Clear</button>
-                            <button onclick="saveColumnVisibility(${manager.id}, '${manager.module_name}', '${tab.key}')" class="bg-blue-600 text-white text-xs px-2 py-0.5 rounded hover:bg-blue-700">Save</button>
-                        </div>
+        // Generic column visibility controls - data was already fetched in one parallel batch
+        colVisTargets.forEach((tc, i) => {
+            const colList = colVisLists[i] || [];
+            const colMap = {};
+            colList.forEach(c => { colMap[c.column_key] = c.is_visible; });
+            const colRows = tc.columns.map(col => {
+                const isVisible = colMap[col.key] !== undefined ? colMap[col.key] : 1;
+                return `<label class="flex items-center gap-1.5 text-xs text-gray-600 py-0.5"><input type="checkbox" name="col-vis-${manager.id}-${tc.key}" data-col-key="${col.key}" ${isVisible ? 'checked' : ''}> ${col.label}</label>`;
+            }).join('');
+            columnVisibilityHtml += `
+            <div class="px-3 py-2 border-t bg-gray-50">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-semibold text-gray-600">${tc.label} Column Visibility</span>
+                    <div class="flex gap-1">
+                        <button onclick="toggleAllColumnVisibilityTab(${manager.id}, '${tc.key}', true)" class="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded hover:bg-gray-300">Select All</button>
+                        <button onclick="toggleAllColumnVisibilityTab(${manager.id}, '${tc.key}', false)" class="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded hover:bg-gray-300">Clear</button>
+                        <button onclick="saveColumnVisibility(${manager.id}, '${manager.module_name}', '${tc.key}')" class="bg-blue-600 text-white text-xs px-2 py-0.5 rounded hover:bg-blue-700">Save</button>
                     </div>
-                    <div class="max-h-32 overflow-y-auto grid grid-cols-3 gap-x-3">${colRows || '<span class="text-xs text-gray-400">No columns available</span>'}</div>
-                </div>`;
-            }
-            // Check subtabs
-            if (tab.subtabs) {
-                for (const sub of tab.subtabs) {
-                    if (TAB_COLUMNS[sub.key] && TAB_COLUMNS[sub.key].columns.length > 0) {
-                        const tc = TAB_COLUMNS[sub.key];
-                        let colRows = '';
-                        try {
-                            const colRes = await fetch(`${API_BASE}/column-visibility/${manager.id}?tab_key=${sub.key}`);
-                            const colList = await colRes.json();
-                            const colMap = {};
-                            colList.forEach(c => { colMap[c.column_key] = c.is_visible; });
-                            colRows = tc.columns.map(col => {
-                                const isVisible = colMap[col.key] !== undefined ? colMap[col.key] : 1;
-                                return `<label class="flex items-center gap-1.5 text-xs text-gray-600 py-0.5"><input type="checkbox" name="col-vis-${manager.id}-${sub.key}" data-col-key="${col.key}" ${isVisible ? 'checked' : ''}> ${col.label}</label>`;
-                            }).join('');
-                        } catch(e) {}
-                        columnVisibilityHtml += `
-                        <div class="px-3 py-2 border-t bg-gray-50">
-                            <div class="flex items-center justify-between mb-1">
-                                <span class="text-xs font-semibold text-gray-600">${tc.label} Column Visibility</span>
-                                <div class="flex gap-1">
-                                    <button onclick="toggleAllColumnVisibilityTab(${manager.id}, '${sub.key}', true)" class="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded hover:bg-gray-300">Select All</button>
-                                    <button onclick="toggleAllColumnVisibilityTab(${manager.id}, '${sub.key}', false)" class="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded hover:bg-gray-300">Clear</button>
-                                    <button onclick="saveColumnVisibility(${manager.id}, '${manager.module_name}', '${sub.key}')" class="bg-blue-600 text-white text-xs px-2 py-0.5 rounded hover:bg-blue-700">Save</button>
-                                </div>
-                            </div>
-                            <div class="max-h-32 overflow-y-auto grid grid-cols-3 gap-x-3">${colRows || '<span class="text-xs text-gray-400">No columns available</span>'}</div>
-                        </div>`;
-                    }
-                }
-            }
-        }
+                </div>
+                <div class="max-h-32 overflow-y-auto grid grid-cols-3 gap-x-3">${colRows || '<span class="text-xs text-gray-400">No columns available</span>'}</div>
+            </div>`;
+        });
 
         // Delete button for non-admin managers
         const deleteBtn = manager.module_name !== 'admin'
@@ -4064,12 +4055,7 @@ async function renderAccessControl() {
             ${ownerFilterHtml}
             ${columnVisibilityHtml}`;
 
-        grid.appendChild(card);
-    }
-
-    if (token !== _renderAccessControlToken) return; // abort if superseded
-    container.innerHTML = '';
-    container.appendChild(grid);
+    return card;
 }
 
 async function setManagerLoginId(managerId) {
