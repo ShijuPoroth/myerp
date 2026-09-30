@@ -63,7 +63,7 @@ function renderAuthorizerEquipmentRequests(requests) {
     }
 
     if (!requests || !Array.isArray(requests) || requests.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-4 text-center text-gray-500">No write-off requests found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="px-4 py-4 text-center text-gray-500">No write-off requests found.</td></tr>';
         return;
     }
 
@@ -76,6 +76,10 @@ function renderAuthorizerEquipmentRequests(requests) {
             <td class="px-4 py-2 whitespace-nowrap text-gray-500 text-xs">${serial}</td>
             <td class="px-4 py-2 max-w-32 truncate" title="${req.equipment_name || ''}">${req.equipment_name || '-'}</td>
             <td class="px-4 py-2 whitespace-nowrap">${req.equipment_auto_serial || '-'}</td>
+            <td class="px-4 py-2 whitespace-nowrap">${req.equipment_country || '-'}</td>
+            <td class="px-4 py-2 whitespace-nowrap">${req.equipment_location || '-'}</td>
+            <td class="px-4 py-2 whitespace-nowrap">${req.equipment_sub_location || '-'}</td>
+            <td class="px-4 py-2 whitespace-nowrap">${req.equipment_owner || '-'}</td>
             <td class="px-4 py-2 whitespace-nowrap">${formatDate(req.write_off_date)}</td>
             <td class="px-4 py-2 max-w-40 truncate" title="${req.reason || ''}">${req.reason || '-'}</td>
             <td class="px-4 py-2 whitespace-nowrap">${req.requested_by || '-'}</td>
@@ -237,7 +241,7 @@ function renderAuthorizerReturnRequests(requests) {
     }
 
     if (!requests || !Array.isArray(requests) || requests.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-4 text-center text-gray-500">No equipment return requests found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="px-4 py-4 text-center text-gray-500">No equipment return requests found.</td></tr>';
         return;
     }
 
@@ -250,6 +254,10 @@ function renderAuthorizerReturnRequests(requests) {
             <td class="px-4 py-2 whitespace-nowrap text-gray-500 text-xs">${serial}</td>
             <td class="px-4 py-2 max-w-32 truncate" title="${req.equipment_name || ''}">${req.equipment_name || '-'}</td>
             <td class="px-4 py-2 whitespace-nowrap">${req.equipment_auto_serial || '-'}</td>
+            <td class="px-4 py-2 whitespace-nowrap">${req.equipment_country || '-'}</td>
+            <td class="px-4 py-2 whitespace-nowrap">${req.equipment_location || '-'}</td>
+            <td class="px-4 py-2 whitespace-nowrap">${req.equipment_sub_location || '-'}</td>
+            <td class="px-4 py-2 whitespace-nowrap">${req.equipment_owner || '-'}</td>
             <td class="px-4 py-2 whitespace-nowrap">${req.supplier_name || '-'}</td>
             <td class="px-4 py-2 whitespace-nowrap">${formatDate(req.return_date)}</td>
             <td class="px-4 py-2 max-w-40 truncate" title="${req.reason || ''}">${req.reason || '-'}</td>
