@@ -3386,7 +3386,8 @@ const MODULE_TABS = {
         { key: 'deployments', label: 'Employee Deployments' }
     ],
     'authorizer': [
-        { key: 'equipment', label: 'Equipment Management' },
+        { key: 'equipment', label: 'Equipment Write Offs' },
+        { key: 'equipment-returns', label: 'Equipment Returns' },
         { key: 'hr', label: 'HR Management' },
         { key: 'warehouse', label: 'Warehouse' },
         { key: 'procurement', label: 'Procurement' }

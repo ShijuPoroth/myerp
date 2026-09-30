@@ -4,7 +4,9 @@
 document.addEventListener('sessionReady', (e) => {
     const manager = e.detail;
     if (manager && manager.module_name !== 'admin') {
-        showSection(`${manager.module_name}-dashboard`);
+        // Modules without a dedicated dashboard land on their own section
+        const dashId = `${manager.module_name}-dashboard-section`;
+        showSection(document.getElementById(dashId) ? `${manager.module_name}-dashboard` : manager.module_name);
     } else {
         showSection('dashboard');
         loadDashboardStats();
