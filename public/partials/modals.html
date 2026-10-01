@@ -2930,15 +2930,13 @@
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-600 mb-1">Requested By</label>
-                            <input type="text" id="write-off-requested-by" class="w-full px-2 py-1.5 border rounded-lg text-sm">
+                            <input type="text" id="write-off-requested-by" readonly class="w-full px-2 py-1.5 border rounded-lg text-sm bg-gray-100 text-gray-600">
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Approved By</label>
-                            <input type="text" id="write-off-approved-by" class="w-full px-2 py-1.5 border rounded-lg text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Approval Date</label>
-                            <input type="date" id="write-off-approval-date" class="w-full px-2 py-1.5 border rounded-lg text-sm">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Send to Authorizer</label>
+                            <select id="write-off-authorizer" class="w-full px-2 py-1.5 border rounded-lg text-sm">
+                                <option value="">-- Select Authorizer --</option>
+                            </select>
                         </div>
                     </div>
 

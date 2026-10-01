@@ -344,6 +344,11 @@ function initializeDatabase() {
         console.log('item_category_id column may already exist');
       }
     });
+    db.run(`ALTER TABLE equipment_write_offs ADD COLUMN authorizer_id INTEGER`, (err) => {
+      if (err && !err.message.includes('duplicate column name')) {
+        console.log('authorizer_id column may already exist');
+      }
+    });
     db.run(`ALTER TABLE item_categories ADD COLUMN serial_number TEXT`, (err) => {
       if (err && !err.message.includes('duplicate column name')) {
         console.log('item_categories serial_number column may already exist');

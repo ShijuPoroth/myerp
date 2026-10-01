@@ -429,6 +429,26 @@ function setupWriteOffPhotoPreview() {
     });
 }
 
+// Fetch authorizer accounts once and cache for the Send-to-Authorizer dropdown
+let _authorizerManagersCache = null;
+async function loadAuthorizerOptions() {
+    if (!_authorizerManagersCache) {
+        try {
+            const res = await fetch(`${API_BASE}/public/managers`);
+            const all = await res.json();
+            _authorizerManagersCache = (Array.isArray(all) ? all : []).filter(m => m.module_name === 'authorizer');
+        } catch (e) {
+            console.error('Error loading authorizers:', e);
+            _authorizerManagersCache = [];
+        }
+    }
+    const sel = document.getElementById('write-off-authorizer');
+    if (sel) {
+        sel.innerHTML = '<option value="">-- Select Authorizer --</option>' +
+            _authorizerManagersCache.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+    }
+}
+
 async function openWriteOffModal() {
     const modal = document.getElementById('write-off-modal');
     const form = document.getElementById('write-off-form');
@@ -436,6 +456,9 @@ async function openWriteOffModal() {
     document.getElementById('write-off-id').value = '';
     document.getElementById('write-off-modal-title').textContent = 'New Write Off';
     document.getElementById('write-off-status').value = 'Pending';
+    // Requested By is always the logged-in account owner
+    document.getElementById('write-off-requested-by').value = (typeof loggedInManager !== 'undefined' && loggedInManager) ? loggedInManager.name : '';
+    loadAuthorizerOptions();
     const statusWrapper = document.getElementById('write-off-status-wrapper');
     if (statusWrapper) statusWrapper.classList.add('hidden');
     renderWriteOffPhotoPreview([]);
@@ -486,8 +509,9 @@ async function editWriteOff(id) {
     if (statusWrapper) statusWrapper.classList.remove('hidden');
     document.getElementById('write-off-reason').value = wo.reason || '';
     document.getElementById('write-off-requested-by').value = wo.requested_by || '';
-    document.getElementById('write-off-approved-by').value = wo.approved_by || '';
-    document.getElementById('write-off-approval-date').value = wo.approval_date || '';
+    await loadAuthorizerOptions();
+    const authSel = document.getElementById('write-off-authorizer');
+    if (authSel) authSel.value = wo.authorizer_id || '';
     document.getElementById('write-off-notes').value = wo.notes || '';
     renderWriteOffPhotoPreview([]);
     renderExistingWriteOffPhotos(wo.photos || []);
@@ -503,9 +527,8 @@ async function saveWriteOff(e) {
     formData.append('write_off_date', document.getElementById('write-off-date').value);
     formData.append('status', document.getElementById('write-off-status').value);
     formData.append('reason', document.getElementById('write-off-reason').value);
-    formData.append('requested_by', document.getElementById('write-off-requested-by').value);
-    formData.append('approved_by', document.getElementById('write-off-approved-by').value);
-    formData.append('approval_date', document.getElementById('write-off-approval-date').value);
+    // requested_by is set server-side from the session; approved_by/date set by the approve action
+    formData.append('authorizer_id', document.getElementById('write-off-authorizer').value);
     formData.append('notes', document.getElementById('write-off-notes').value);
 
     const photoInput = document.getElementById('write-off-photos');

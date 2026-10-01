@@ -3173,9 +3173,11 @@ router.get('/write-offs', (req, res) => {
             lt.name as equipment_location,
             slt.name as equipment_sub_location,
             bt.name as equipment_business_type,
-            bta.business_unit_code as equipment_business_unit_code
+            bta.business_unit_code as equipment_business_unit_code,
+            mm.name as authorizer_name
           FROM equipment_write_offs wo
           LEFT JOIN equipment e ON wo.equipment_id = e.id
+          LEFT JOIN module_managers mm ON mm.id = wo.authorizer_id
           LEFT JOIN employees emp ON emp.id = CAST(e.assigned_to AS INTEGER)
           LEFT JOIN equipment_owners eo ON eo.id = e.owner_id
           LEFT JOIN business_type_assignments bta ON bta.id = e.location_id
@@ -3194,6 +3196,11 @@ router.get('/write-offs', (req, res) => {
       if (allowedOwnerIds.length === 0) return res.json([]);
       conditions.push(`e.owner_id IN (${allowedOwnerIds.map(() => '?').join(',')})`);
       params.push(...allowedOwnerIds);
+    }
+    // Authorizer accounts only see requests routed to them
+    if (req.session && req.session.moduleName === 'authorizer') {
+      conditions.push('wo.authorizer_id = ?');
+      params.push(req.session.managerId);
     }
     if (conditions.length > 0) query += ` WHERE ${conditions.join(' AND ')}`;
     query += ` ORDER BY wo.created_at DESC`;
@@ -3217,7 +3224,10 @@ router.get('/write-offs', (req, res) => {
 });
 
 router.post('/write-offs', requireModulePermission('write-offs', 'add'), upload.array('photos', 10), async (req, res) => {
-  const { equipment_id, write_off_date, reason, status, requested_by, approved_by, approval_date, notes } = req.body;
+  const { equipment_id, write_off_date, reason, status, authorizer_id, notes } = req.body;
+  // Requested By is always the logged-in account owner - never trust the client
+  const requested_by = (req.session && req.session.managerName) || null;
+  const authorizerId = authorizer_id ? parseInt(authorizer_id) : null;
 
   // Dedup uploaded photos
   if (req.files && req.files.length > 0) {
@@ -3234,9 +3244,9 @@ router.post('/write-offs', requireModulePermission('write-offs', 'add'), upload.
       return res.status(409).json({ error: `Equipment "${row.name}" (Serial: ${row.auto_serial_number}) already has a write-off record` });
     }
 
-    db.run(`INSERT INTO equipment_write_offs (equipment_id, write_off_date, reason, status, requested_by, approved_by, approval_date, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [equipment_id, write_off_date, reason, status || 'Pending', requested_by, approved_by, approval_date, notes], function(err) {
+    db.run(`INSERT INTO equipment_write_offs (equipment_id, write_off_date, reason, status, requested_by, authorizer_id, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [equipment_id, write_off_date, reason, status || 'Pending', requested_by, authorizerId, notes], function(err) {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
@@ -3257,21 +3267,23 @@ router.post('/write-offs', requireModulePermission('write-offs', 'add'), upload.
         }
       });
     }
-    res.json({ id: newId, equipment_id, write_off_date, reason, status: finalStatus, requested_by, approved_by, approval_date, notes });
+    res.json({ id: newId, equipment_id, write_off_date, reason, status: finalStatus, requested_by, authorizer_id: authorizerId, notes });
   });
   });
 });
 
 router.put('/write-offs/:id', upload.array('photos', 10), requireModulePermission('write-offs', 'edit'), async (req, res) => {
-  const { equipment_id, write_off_date, reason, status, requested_by, approved_by, approval_date, notes } = req.body;
+  const { equipment_id, write_off_date, reason, status, authorizer_id, notes } = req.body;
+  const authorizerId = authorizer_id ? parseInt(authorizer_id) : null;
+  // requested_by / approved_by / approval_date are system-managed (set on create / on approve)
   // Dedup uploaded photos
   if (req.files && req.files.length > 0) {
     try { await dedupUploadedFiles(req.files); } catch (err) { return res.status(500).json({ error: 'File dedup error: ' + err.message }); }
   }
   db.run(`UPDATE equipment_write_offs
-          SET equipment_id = ?, write_off_date = ?, reason = ?, status = ?, requested_by = ?, approved_by = ?, approval_date = ?, notes = ?
+          SET equipment_id = ?, write_off_date = ?, reason = ?, status = ?, authorizer_id = ?, notes = ?
           WHERE id = ?`,
-    [equipment_id, write_off_date, reason, status, requested_by, approved_by, approval_date, notes, req.params.id], function(err) {
+    [equipment_id, write_off_date, reason, status, authorizerId, notes, req.params.id], function(err) {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
@@ -3333,7 +3345,7 @@ router.delete('/write-offs/:id/photos/:photoId', (req, res) => {
 
 router.post('/write-offs/:id/approve', (req, res) => {
   const today = new Date().toISOString().split('T')[0];
-  db.get('SELECT equipment_id FROM equipment_write_offs WHERE id = ?', [req.params.id], (err, row) => {
+  db.get('SELECT equipment_id, authorizer_id FROM equipment_write_offs WHERE id = ?', [req.params.id], (err, row) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
@@ -3342,10 +3354,15 @@ router.post('/write-offs/:id/approve', (req, res) => {
       res.status(404).json({ error: 'Write-off not found' });
       return;
     }
+    // Authorizer accounts may only approve requests routed to them
+    if (req.session && req.session.moduleName === 'authorizer' && row.authorizer_id !== req.session.managerId) {
+      res.status(403).json({ error: 'This request is assigned to a different authorizer.' });
+      return;
+    }
     db.run(`UPDATE equipment_write_offs
             SET status = 'Approved', approval_date = ?, approved_by = ?
             WHERE id = ?`,
-      [today, 'Authorizer', req.params.id], function(err) {
+      [today, (req.session && req.session.managerName) || 'Authorizer', req.params.id], function(err) {
       if (err) {
         res.status(500).json({ error: err.message });
         return;
@@ -3371,7 +3388,7 @@ router.post('/write-offs/:id/approve', (req, res) => {
 });
 
 router.post('/write-offs/:id/reject', (req, res) => {
-  db.get('SELECT equipment_id FROM equipment_write_offs WHERE id = ?', [req.params.id], (err, row) => {
+  db.get('SELECT equipment_id, authorizer_id FROM equipment_write_offs WHERE id = ?', [req.params.id], (err, row) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
@@ -3380,10 +3397,14 @@ router.post('/write-offs/:id/reject', (req, res) => {
       res.status(404).json({ error: 'Write-off not found' });
       return;
     }
+    if (req.session && req.session.moduleName === 'authorizer' && row.authorizer_id !== req.session.managerId) {
+      res.status(403).json({ error: 'This request is assigned to a different authorizer.' });
+      return;
+    }
     db.run(`UPDATE equipment_write_offs
             SET status = 'Rejected', approved_by = ?
             WHERE id = ?`,
-      ['Authorizer', req.params.id], function(err) {
+      [(req.session && req.session.managerName) || 'Authorizer', req.params.id], function(err) {
       if (err) {
         res.status(500).json({ error: err.message });
         return;
