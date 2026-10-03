@@ -809,9 +809,10 @@ function onMaintenanceSublocationChange() {
 
 function onMaintenanceTypeChange() {
     const type = document.getElementById('maintenance-type').value;
+    const isGeneral = document.getElementById('maintenance-general').checked;
     const pmTypeWrapper = document.getElementById('maintenance-pm-type-wrapper');
     const pmTasksSection = document.getElementById('maintenance-pm-tasks-section');
-    if (type === 'preventive') {
+    if (type === 'preventive' && !isGeneral) {
         pmTypeWrapper.classList.remove('hidden');
         pmTasksSection.classList.remove('hidden');
     } else {
@@ -1046,13 +1047,18 @@ function toggleGeneralMaintenance() {
     const isGeneral = document.getElementById('maintenance-general').checked;
     const wrapper = document.getElementById('maintenance-equipment-wrapper');
     const select = document.getElementById('maintenance-equipment');
+    const pmTypeWrapper = document.getElementById('maintenance-pm-type-wrapper');
+    const pmTasksSection = document.getElementById('maintenance-pm-tasks-section');
     if (isGeneral) {
         wrapper.classList.add('hidden');
         select.value = '';
         select.required = false;
+        if (pmTypeWrapper) pmTypeWrapper.classList.add('hidden');
+        if (pmTasksSection) pmTasksSection.classList.add('hidden');
     } else {
         wrapper.classList.remove('hidden');
         select.required = true;
+        onMaintenanceTypeChange(); // show PM Type only if type is preventive
     }
 }
 
