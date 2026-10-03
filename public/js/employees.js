@@ -19,7 +19,7 @@ async function loadEmployees() {
         filterEmployees();
         populateEmployeeSelects();
         if (typeof adjustTableContainerHeights === 'function') adjustTableContainerHeights();
-        loadEmployeeLeaveBalances().then(() => {
+        return loadEmployeeLeaveBalances().then(() => {
             renderEmployeeList(allEmployees);
             if (typeof applyEmployeeColumnVisibility === 'function') applyEmployeeColumnVisibility();
             if (typeof applyEmployeeFreeze === 'function') applyEmployeeFreeze();

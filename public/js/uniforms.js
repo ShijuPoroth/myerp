@@ -8,6 +8,7 @@ async function loadUniformItems() {
         renderUniformItems();
         populateUniformItemSelects();
         renderUniformItemColumnCheckboxes();
+        return Promise.resolve();
     } catch (error) {
         console.error('Error loading uniform items:', error);
         showTableError('uniform-items-table-body', 'Error loading uniform items.');
