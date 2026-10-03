@@ -1819,7 +1819,7 @@ router.post('/transfers', requireModulePermission('transfers', 'add'), (req, res
 router.get('/maintenance-logs', (req, res) => {
   const equipment_id = req.query.equipment_id;
   let query = `SELECT ml.*, e.name as equipment_name, e.auto_serial_number as equipment_auto_serial,
-               ml.performed_by_id, ml.requested_by_id,
+               ml.performed_by_id, ml.requested_by_id, ml.general_maintenance,
                emp.first_name || ' ' || emp.last_name as performed_by_name,
                emp2.first_name || ' ' || emp2.last_name as requested_by_name,
                c.name as country_name, lt.name as location_type_name, slt.name as sub_location_name, bt.name as business_type_name, bta.business_unit_code,
@@ -2047,7 +2047,7 @@ router.delete('/maintenance-logs/:id/photos/:photoId', (req, res) => {
 });
 
 router.post('/maintenance-logs', requireModulePermission('maintenance', 'add'), (req, res) => {
-  const { maintenance_serial_number, equipment_id, maintenance_type, maintenance_status, description, cost, performed_by_id, performed_by, requested_by_id, requested_by, performed_date, next_maintenance_date, parts } = req.body;
+  const { maintenance_serial_number, equipment_id, general_maintenance, maintenance_type, maintenance_status, description, cost, performed_by_id, performed_by, requested_by_id, requested_by, performed_date, next_maintenance_date, parts } = req.body;
 
   resolveEmployeeId(performed_by_id, performed_by, (err, resolvedPerformedById) => {
     if (err) { res.status(500).json({ error: err.message }); return; }
@@ -2056,9 +2056,9 @@ router.post('/maintenance-logs', requireModulePermission('maintenance', 'add'), 
 
   db.run('BEGIN TRANSACTION');
 
-  db.run(`INSERT INTO maintenance_logs (maintenance_serial_number, equipment_id, maintenance_type, maintenance_status, description, cost, performed_by_id, performed_by, requested_by_id, requested_by, performed_date, next_maintenance_date)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [maintenance_serial_number, equipment_id, maintenance_type, maintenance_status, description, cost, resolvedPerformedById, performed_by, resolvedRequestedById, requested_by || null, performed_date, next_maintenance_date],
+  db.run(`INSERT INTO maintenance_logs (maintenance_serial_number, equipment_id, general_maintenance, maintenance_type, maintenance_status, description, cost, performed_by_id, performed_by, requested_by_id, requested_by, performed_date, next_maintenance_date)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [maintenance_serial_number, (equipment_id && !general_maintenance) ? equipment_id : null, general_maintenance || 0, maintenance_type, maintenance_status, description, cost, resolvedPerformedById, performed_by, resolvedRequestedById, requested_by || null, performed_date, next_maintenance_date],
     function(err) {
       if (err) {
         db.run('ROLLBACK');
@@ -2068,8 +2068,8 @@ router.post('/maintenance-logs', requireModulePermission('maintenance', 'add'), 
 
       const maintenanceLogId = this.lastID;
 
-      // If maintenance is completed, reset accumulated usage days
-      if (maintenance_status && maintenance_status.toLowerCase() === 'completed') {
+      // If maintenance is completed on equipment, reset accumulated usage days
+      if (maintenance_status && maintenance_status.toLowerCase() === 'completed' && equipment_id && !general_maintenance) {
         db.run('UPDATE equipment SET accumulated_usage_days = 0 WHERE id = ?', [equipment_id]);
       }
 
@@ -2205,7 +2205,7 @@ router.post('/maintenance-logs/:id/tasks', (req, res) => {
 });
 
 router.put('/maintenance-logs/:id', requireModulePermission('maintenance', 'edit'), (req, res) => {
-  const { maintenance_serial_number, equipment_id, maintenance_type, maintenance_status, description, cost, performed_by_id, performed_by, requested_by_id, requested_by, performed_date, next_maintenance_date, parts } = req.body;
+  const { maintenance_serial_number, equipment_id, general_maintenance, maintenance_type, maintenance_status, description, cost, performed_by_id, performed_by, requested_by_id, requested_by, performed_date, next_maintenance_date, parts } = req.body;
 
   resolveEmployeeId(performed_by_id, performed_by, (err, resolvedPerformedById) => {
     if (err) { res.status(500).json({ error: err.message }); return; }
@@ -2214,15 +2214,22 @@ router.put('/maintenance-logs/:id', requireModulePermission('maintenance', 'edit
 
   db.run('BEGIN TRANSACTION');
 
-  db.run(`UPDATE maintenance_logs SET maintenance_serial_number = ?, equipment_id = ?, maintenance_type = ?, maintenance_status = ?, description = ?, cost = ?, performed_by_id = ?, performed_by = ?, requested_by_id = ?, requested_by = ?, performed_date = ?, next_maintenance_date = ?
+  db.run(`UPDATE maintenance_logs SET maintenance_serial_number = ?, equipment_id = ?, general_maintenance = ?, maintenance_type = ?, maintenance_status = ?, description = ?, cost = ?, performed_by_id = ?, performed_by = ?, requested_by_id = ?, requested_by = ?, performed_date = ?, next_maintenance_date = ?
           WHERE id = ?`,
-    [maintenance_serial_number, equipment_id, maintenance_type, maintenance_status, description, cost, resolvedPerformedById, performed_by, resolvedRequestedById, requested_by || null, performed_date, next_maintenance_date, req.params.id],
+    [maintenance_serial_number, equipment_id, general_maintenance || 0, maintenance_type, maintenance_status, description, cost, resolvedPerformedById, performed_by, resolvedRequestedById, requested_by || null, performed_date, next_maintenance_date, req.params.id],
     function(err) {
       if (err) {
         db.run('ROLLBACK');
         res.status(500).json({ error: err.message });
         return;
       }
+
+      // If maintenance status changed to completed on equipment, reset accumulated usage days
+      db.get('SELECT equipment_id, maintenance_status FROM maintenance_logs WHERE id = ?', [req.params.id], (err, row) => {
+        if (!err && row && row.equipment_id && row.maintenance_status !== maintenance_status && maintenance_status && maintenance_status.toLowerCase() === 'completed') {
+          db.run('UPDATE equipment SET accumulated_usage_days = 0 WHERE id = ?', [row.equipment_id]);
+        }
+      });
 
       // Get existing parts to restore inventory later
       db.all('SELECT spare_part_id, quantity_used FROM maintenance_parts WHERE maintenance_log_id = ?', [req.params.id], function(err, existingParts) {

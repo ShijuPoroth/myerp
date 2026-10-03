@@ -709,6 +709,13 @@ const modal = document.getElementById('maintenance-modal');
     maintenancePhotoFiles = [];
     populateEmployeeSelects();
 
+    // Reset general maintenance checkbox
+    const generalCheckbox = document.getElementById('maintenance-general');
+    if (generalCheckbox) {
+        generalCheckbox.checked = isEdit && log.general_maintenance ? true : false;
+        toggleGeneralMaintenance();
+    }
+
     // Fetch next maintenance serial number from server only for new logs
     if (!log) {
         try {
@@ -918,16 +925,21 @@ async function populateMaintenanceEditValues(log) {
     const equipment = allEquipment.find(eq => eq.id == log.equipment_id);
     const equipmentSelect = document.getElementById('maintenance-equipment');
 
-    // Set cascading location selects from the equipment's assignment
-    if (equipment && equipment.location_id) {
-        await setCascadingLocationByAssignment(equipment.location_id, 'maintenance-country', 'maintenance-location', 'maintenance-sublocation');
-        // Trigger sublocation change to filter equipment dropdown
-        const sublocationSelect = document.getElementById('maintenance-sublocation');
-        if (sublocationSelect) sublocationSelect.dispatchEvent(new Event('change'));
-    }
+    // If general maintenance, skip equipment/location cascading
+    if (log.general_maintenance) {
+        toggleGeneralMaintenance();
+    } else {
+        // Set cascading location selects from the equipment's assignment
+        if (equipment && equipment.location_id) {
+            await setCascadingLocationByAssignment(equipment.location_id, 'maintenance-country', 'maintenance-location', 'maintenance-sublocation');
+            // Trigger sublocation change to filter equipment dropdown
+            const sublocationSelect = document.getElementById('maintenance-sublocation');
+            if (sublocationSelect) sublocationSelect.dispatchEvent(new Event('change'));
+        }
 
-    if (equipmentSelect) {
-        equipmentSelect.value = log.equipment_id;
+        if (equipmentSelect) {
+            equipmentSelect.value = log.equipment_id;
+        }
     }
     
     document.getElementById('maintenance-serial').value = log.maintenance_serial_number || '';
@@ -1030,6 +1042,19 @@ async function populateMaintenancePartsRows(parts) {
     await populateMaintenancePartsDropdown();
 }
 
+function toggleGeneralMaintenance() {
+    const isGeneral = document.getElementById('maintenance-general').checked;
+    const wrapper = document.getElementById('maintenance-equipment-wrapper');
+    const select = document.getElementById('maintenance-equipment');
+    if (isGeneral) {
+        wrapper.classList.add('hidden');
+        select.value = '';
+        select.required = false;
+    } else {
+        wrapper.classList.remove('hidden');
+        select.required = true;
+    }
+}
 
 function closeMaintenanceModal() {
     const modal = document.getElementById('maintenance-modal');
@@ -1202,8 +1227,9 @@ async function saveMaintenance(e) {
     const titleElement = document.getElementById('maintenance-modal-title');
     const isAddMode = !titleElement || titleElement.textContent.trim() === 'Add Maintenance Log';
     const id = isAddMode ? '' : document.getElementById('maintenance-id').value;
-    const equipmentId = document.getElementById('maintenance-equipment').value;
-    const equipment = allEquipment.find(eq => eq.id == equipmentId);
+    const isGeneral = document.getElementById('maintenance-general').checked;
+    const equipmentId = isGeneral ? '' : document.getElementById('maintenance-equipment').value;
+    const equipment = isGeneral ? null : allEquipment.find(eq => eq.id == equipmentId);
     const maintenanceType = document.getElementById('maintenance-type').value;
     const partsData = getMaintenancePartsData();
 
@@ -1223,6 +1249,7 @@ async function saveMaintenance(e) {
     const data = {
         maintenance_serial_number: document.getElementById('maintenance-serial').value,
         equipment_id: equipmentId,
+        general_maintenance: isGeneral ? 1 : 0,
         maintenance_type: maintenanceType,
         maintenance_status: document.getElementById('maintenance-status').value,
         description: document.getElementById('maintenance-description').value,

@@ -281,6 +281,12 @@
         </div>
         <form id="maintenance-form" class="p-6">
             <input type="hidden" id="maintenance-id">
+            <div class="mb-3">
+                <label class="flex items-center gap-2 text-sm font-medium text-gray-700">
+                    <input type="checkbox" id="maintenance-general" onchange="toggleGeneralMaintenance()">
+                    General Maintenance (no equipment required)
+                </label>
+            </div>
             <div class="grid grid-cols-4 gap-3">
                 <div class="col-span-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Maintenance Serial</label>
@@ -304,7 +310,7 @@
                         <option value="">Select Sublocation / Business Type</option>
                     </select>
                 </div>
-                <div>
+                <div id="maintenance-equipment-wrapper">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Equipment *</label>
                     <select id="maintenance-equipment" required class="w-full px-3 py-2 border rounded-lg">
                         <option value="">Select Equipment</option>

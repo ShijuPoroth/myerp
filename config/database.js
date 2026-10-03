@@ -418,6 +418,13 @@ function initializeDatabase() {
       FOREIGN KEY (equipment_id) REFERENCES equipment(id)
     )`);
 
+    // Add general_maintenance flag to distinguish equipment-linked from general logs
+    db.run(`ALTER TABLE maintenance_logs ADD COLUMN general_maintenance INTEGER DEFAULT 0`, (err) => {
+      if (err && !err.message.includes('duplicate column name')) {
+        console.log('general_maintenance column may already exist');
+      }
+    });
+
     // Spare Parts table
     db.run(`CREATE TABLE IF NOT EXISTS spare_parts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
