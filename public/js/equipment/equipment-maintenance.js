@@ -820,7 +820,6 @@ function onMaintenanceTypeChange() {
         pmTasksSection.classList.add('hidden');
         document.getElementById('maintenance-pm-type').value = '';
         document.getElementById('maintenance-pm-tasks-container').innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Select equipment and PM type to load tasks</p>';
-        document.getElementById('maintenance-next-date').value = '';
     }
 }
 
@@ -952,7 +951,7 @@ async function populateMaintenanceEditValues(log) {
     document.getElementById('maintenance-requested-by').value = log.requested_by_id || '';
     document.getElementById('maintenance-performed-by').value = log.performed_by_id || '';
     document.getElementById('maintenance-date').value = log.performed_date || '';
-    document.getElementById('maintenance-next-date').value = log.next_maintenance_date || '';
+    // Next maintenance date is auto-calculated from PM settings, not user input
     document.getElementById('maintenance-id').value = log.id;
 
     // Load and populate parts used
@@ -1265,7 +1264,6 @@ async function saveMaintenance(e) {
         performed_by_id: performedById,
         performed_by: performedByName,
         performed_date: document.getElementById('maintenance-date').value,
-        next_maintenance_date: document.getElementById('maintenance-next-date').value,
         parts: partsData,
         pm_tasks: getMaintenancePMTasksData()
     };
