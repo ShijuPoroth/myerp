@@ -71,6 +71,9 @@ function showSection(section) {
         loadEmployees();
         loadUniformItems();
         setTimeout(adjustTableContainerHeights, 150);
+        // Re-apply permissions after HR data loads (race condition fix)
+        if (typeof applyTabPermissionVisibility === 'function') applyTabPermissionVisibility();
+        if (typeof applyDataPermissionVisibility === 'function') applyDataPermissionVisibility();
     } else if (section === 'catering') {
         showCateringSubTab('recipes');
         loadCateringData();
