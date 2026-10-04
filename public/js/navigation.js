@@ -74,6 +74,9 @@ function showSection(section) {
         // Re-apply permissions after HR data loads (race condition fix)
         if (typeof applyTabPermissionVisibility === 'function') applyTabPermissionVisibility();
         if (typeof applyDataPermissionVisibility === 'function') applyDataPermissionVisibility();
+        // Re-apply permissions after HR data loads (race condition fix)
+        if (typeof applyTabPermissionVisibility === 'function') applyTabPermissionVisibility();
+        if (typeof applyDataPermissionVisibility === 'function') applyDataPermissionVisibility();
     } else if (section === 'catering') {
         showCateringSubTab('recipes');
         loadCateringData();
