@@ -68,14 +68,9 @@ function showSection(section) {
         if (typeof setCurrentModuleTabContext === 'function') {
             setCurrentModuleTabContext('hr', 'employee-management', 'add-employee');
         }
-        loadEmployees().then(() => {
-            loadUniformItems().then(() => {
-                // Re-apply permission visibility after content is fully rendered
-                if (typeof applyTabPermissionVisibility === 'function') applyTabPermissionVisibility();
-                if (typeof applyDataPermissionVisibility === 'function') applyDataPermissionVisibility();
-                setTimeout(adjustTableContainerHeights, 150);
-            });
-        });
+        loadEmployees();
+        loadUniformItems();
+        setTimeout(adjustTableContainerHeights, 150);
     } else if (section === 'catering') {
         showCateringSubTab('recipes');
         loadCateringData();
