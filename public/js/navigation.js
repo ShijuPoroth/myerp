@@ -50,33 +50,12 @@ function showSection(section) {
         showEquipmentSubTab('equipment');
         setTimeout(adjustTableContainerHeights, 150);
     } else if (section === 'hr') {
-        document.querySelectorAll('.hr-tab-content').forEach(function(c) { c.style.display = 'none'; });
-        var hrtEl = document.getElementById('hr-employee-management-tab');
-        if (hrtEl) hrtEl.style.display = 'flex';
-        document.querySelectorAll('.employee-management-tab-content').forEach(function(c) { c.style.display = 'none'; });
-        var emtEl = document.getElementById('employee-management-add-employee-tab');
-        if (emtEl) emtEl.style.display = 'flex';
         // Reset HR tab buttons
         document.querySelectorAll('.hr-tab').forEach(function(btn) { btn.classList.remove('bg-blue-600', 'text-white'); btn.classList.add('bg-gray-200', 'text-gray-700'); });
         var hrEmpBtn = document.querySelector('.hr-tab[data-tab="employee-management"]');
         if (hrEmpBtn) { hrEmpBtn.classList.remove('bg-gray-200', 'text-gray-700'); hrEmpBtn.classList.add('bg-blue-600', 'text-white'); }
-        // Reset employee management sub-tab buttons
-        document.querySelectorAll('.employee-management-tab').forEach(function(btn) { btn.classList.remove('bg-blue-600', 'text-white'); btn.classList.add('bg-gray-200', 'text-gray-700'); });
-        var addEmpBtn = document.querySelector('.employee-management-tab[data-tab="add-employee"]');
-        if (addEmpBtn) { addEmpBtn.classList.remove('bg-gray-200', 'text-gray-700'); addEmpBtn.classList.add('bg-blue-600', 'text-white'); }
-        // Set tab context so hasTablePermission checks the correct tab/subtab permissions
-        if (typeof setCurrentModuleTabContext === 'function') {
-            setCurrentModuleTabContext('hr', 'employee-management', 'add-employee');
-        }
-        loadEmployees();
-        loadUniformItems();
-        setTimeout(adjustTableContainerHeights, 150);
-        // Re-apply permissions after HR data loads (race condition fix)
-        if (typeof applyTabPermissionVisibility === 'function') applyTabPermissionVisibility();
-        if (typeof applyDataPermissionVisibility === 'function') applyDataPermissionVisibility();
-        // Re-apply permissions after HR data loads (race condition fix)
-        if (typeof applyTabPermissionVisibility === 'function') applyTabPermissionVisibility();
-        if (typeof applyDataPermissionVisibility === 'function') applyDataPermissionVisibility();
+        // Use the proper tab switching function instead of manual DOM manipulation
+        showHRTab('employee-management');
     } else if (section === 'catering') {
         showCateringSubTab('recipes');
         loadCateringData();
