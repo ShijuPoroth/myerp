@@ -1,7 +1,7 @@
 # MWH Management ERP — Agent Reference File
 
 > **Purpose:** Complete structural backup of the app. Use this to recover context without reading the entire codebase.
-> **Last Updated:** 2026-09-19
+> **Last Updated:** 2026-10-10
 
 ---
 
@@ -306,7 +306,10 @@ All tables created in `config/database.js` via `CREATE TABLE IF NOT EXISTS`.
 | `audit_logs` | Audit trail (all modules) |
 | `module_managers` | Module manager accounts (with login IDs) |
 | `module_table_permissions` | Table-level permissions per manager |
-| `module_tab_permissions` | Tab-level permissions per manager |
+| `module_tab_permissions` | Tab-level permissions per manager (`can_view/add/edit/delete/export`) — single source of truth for backend checks |
+| `module_manager_location_filters` | Allowed locations per manager (empty = all) |
+| `module_manager_owner_filters` | Allowed equipment owners per manager (empty = all) |
+| `module_manager_column_visibility` | Per-manager column visibility per tab |
 | `sessions` | Session store (SQLite-backed) |
 
 ---
@@ -493,6 +496,8 @@ Single-page application with all sections in one HTML file (~297KB). Sections ar
 - `POST /module-managers/:id/password` — Set password
 - `GET/POST /module-table-permissions/:managerId` — Table permissions
 - `GET/POST /module-tab-permissions/:managerId` — Tab permissions
+- `GET /access-control-data` — Bundle of all Access Control data (admin only)
+- `GET/PUT /module-managers/:id/owner-filters` — Allowed owners per manager
 - `GET /equipment-items` — Equipment items list
 - `GET/POST/PUT/DELETE /pm-tasks` — PM tasks CRUD
 
@@ -707,17 +712,72 @@ Single-page application with all sections in one HTML file (~297KB). Sections ar
 - **Files:** `routes/equipment.js`, `routes/hr.js`
 - **Date:** 2026-09-19
 
-### Maintenance Log Print — Text Too Small (In Progress)
-- **Issue:** When printing or saving maintenance log details as PDF, text content was too small to read while photos appeared large.
- **Changes made so far:**
-  1. Increased all font sizes in the print HTML template (body 11px→14px, labels 11px→13px, section titles 11px→14px, table headers/cells 11px→13px, etc.).
-  2. Changed `@page size: auto` to `@page size: A4 portrait`.
-  3. Changed `.page max-width: 800px` to `width: 100%; max-width: none`.
-  4. Replaced iframe-based printing with `window.open()` approach for more reliable print scaling.
-  5. Bumped cache-busting version to `?v=43`.
-- **Status:** User reports issue still persists — further debugging needed.
-- **Files:** `public/js/equipment/equipment-maintenance.js`, `public/index.html`
-- **Date:** 2026-09-14
+### Maintenance Log Print — Text Too Small (Fixed)
+- **Issue:** Printed/PDF maintenance log text was too small while photos were large.
+- **Fix:** Larger print fonts, A4 portrait `@page`, full-width page, `window.open()` printing, print styles in `public/css/maintenance-print.css`.
+- **Files:** `public/js/equipment/equipment-maintenance.js`, `public/css/maintenance-print.css`
+- **Date:** 2026-09-14 → resolved later in September
+
+### Equipment List Export Permission (Enhancement)
+- `module_tab_permissions.can_export` column + **Export** checkbox in Access Control.
+- CSV/Excel/PDF exports require Export permission (client + server checks); Import CSV follows **Add** permission.
+- **Files:** `config/database.js`, `routes/equipment.js`, `public/js/admin-settings.js`, `public/js/equipment/equipment-core.js`
+
+### Global Loading Overlay (Enhancement)
+- API actions show a global loading overlay; Access Control shows loading feedback.
+
+### Maintenance Spare Parts — Serial/Brand + Multiple Parts (Enhancement + Fix)
+- Part picker shows `SP-xxx · SN: <part_serial_number> · Brand · Spec · Qty · Cost`; search matches serials.
+- **Bug fixed:** `populateMaintenancePartsRows` wiped the container (incl. the static `+` row) on open, so only one part could be added. A persistent **+ Add Part** button now sits *below* `#maintenance-parts-container`; each row has a `−` remove button.
+- **Files:** `public/js/equipment/equipment-maintenance.js`, `public/partials/modals.html`
+
+### General Maintenance (No Equipment) (Enhancement)
+- "General Maintenance (no equipment required)" checkbox in Add Maintenance Log. Saves `equipment_id = NULL`, `general_maintenance = 1` (column added via migration).
+- When checked: Equipment selector, **PM Type** and **PM Tasks** are hidden; backend skips equipment status/usage updates.
+- **Next Maintenance Date** field removed from the Add Maintenance Log form (auto-calculated).
+- **Files:** `config/database.js`, `routes/equipment.js`, `public/js/equipment/equipment-maintenance.js`, `public/partials/modals.html`
+- **Date:** 2026-10-02/03
+
+### Access Control Performance (Enhancement)
+- `GET /api/access-control-data` bundle endpoint (admin) returns managers, tab permissions, location filters, owner filters, column visibility, business-type assignments, owners in **one** request (queries run in parallel server-side).
+- `renderAccessControl` uses only the bundle; redundant `/module-managers` fetch and double renders removed.
+- **Reason:** VPS (Namecheap, Chicago) has ~700 ms ping / ~780 ms per API call from users — round trips dominate perceived speed.
+- **Files:** `routes/admin.js`, `public/js/admin-settings.js`
+
+### Static Asset Caching (Enhancement)
+- Static JS/CSS served with `Cache-Control: public, max-age=86400` + ETag (was `no-store`). `/app` still revalidates. **Always bump `?v=` when changing frontend files.**
+- **Files:** `server.js`
+
+### Authorizer Accounts (Enhancement)
+- Add Manager dropdown now includes **Authorizer** and **Warehouse**. Authorizers log in via normal `module_managers` flow (`module_name = 'authorizer'`).
+- `app.js`: modules without a `{module}-dashboard` section land on their main section (previously blank page).
+- `MODULE_TABS['authorizer']`: `equipment` (Write Offs), `equipment-returns`, `hr`, `warehouse`, `procurement`.
+- Column-visibility panels skipped on authorizer cards (authorizer tab key `equipment` collided with Equipment List `TAB_COLUMNS`).
+- **Allowed Owners** panel shown on authorizer cards; `getAllowedFilters` already applies owner/location filters to `/write-offs` and `/returns` for any session manager.
+- Authorizer write-off/return tables show Country, Location, Sub Location, Owner columns.
+- **Files:** `public/index.html`, `public/js/app.js`, `public/js/admin-settings.js`, `public/js/authorizer.js`
+
+### Write-Off Routing to Specific Authorizer (Enhancement)
+- `equipment_write_offs.authorizer_id` column (migration).
+- New Write Off form: **Requested By** read-only, set server-side from session name; Approved By / Approval Date removed; **Send to Authorizer** dropdown.
+- `GET /write-offs`: authorizer sessions see only requests with their `authorizer_id` **or** `authorizer_id IS NULL` (legacy/unassigned). Admin sees all.
+- Approve/Reject: 403 if routed to a different authorizer; `approved_by` records the acting account name (was hardcoded `'Authorizer'`).
+- Equipment Returns do **not** yet have authorizer routing.
+- **Files:** `config/database.js`, `routes/equipment.js`, `public/js/equipment/equipment-write-offs.js`, `public/partials/modals.html`
+
+### HR Page Broken Layout on Load (Fix — verify)
+- **Symptom:** HR Management sometimes loaded with sub-tab row missing and gray vertical column blocks; a browser refresh usually fixed it.
+- **Fix attempt (2026-10-07, commit `4f63393`):** `showSection('hr')` no longer manually toggles tab panels/buttons; it highlights the main tab and calls `showHRTab('employee-management')` → `showEmployeeManagementTab('add-employee')` → `loadEmployees()`. Earlier attempts (`a706260`, `107e9fe`, follow-ups) were partially reverted.
+- **Regression (fixed 2026-10-10):** that change dropped `loadUniformItems()`, leaving Uniform Management → Items empty. Restored in `showSection('hr')` and `showUniformTab('items')` now loads its own data.
+- **Status:** Not yet confirmed fixed on production. If it recurs: capture browser console + check which `.employee-management-tab-content` / `.hr-tab-content` elements have `display` set; suspect `display:flex` applied to multiple panels or permission visibility hiding the sub-tab button row.
+- **Files:** `public/js/navigation.js`, `public/js/employees.js`, `public/js/uniforms.js`
+
+### HR Manager User Guide
+- `HR_Manager_User_Guide.docx` generated in project root (via Word COM from Markdown); intentionally **not** committed to git.
+
+### Deferred
+- Server-side pagination for the Equipment list (user said "leave it").
+- Moving VPS closer to users (main remaining latency cause).
 
 ---
 
@@ -725,16 +785,17 @@ Single-page application with all sections in one HTML file (~297KB). Sections ar
 
 All JS files in `public/index.html` are loaded with `?v=N` query parameters. When modifying any JS file, bump the version number in `index.html` to force browser cache invalidation.
 
-Current versions (as of 2026-09-14):
-- `equipment-core.js?v=123`
-- `equipment-maintenance.js?v=43`
-- `uniforms.js?v=45`
-- `employees.js?v=93`
-- `admin-settings.js?v=68`
-- `navigation.js?v=54`
-- `dashboard.js?v=53`
-- `utils.js?v=36`
-- `loader.js?v=35` (loads `modals.html?v=34`)
+Current versions (as of 2026-10-10):
+- `equipment-core.js?v=126`
+- `equipment-maintenance.js?v=52`
+- `equipment-write-offs.js?v=17`
+- `uniforms.js?v=46`
+- `employees.js?v=94`
+- `admin-settings.js?v=81`
+- `navigation.js?v=60`
+- `authorizer.js?v=18`
+- `app.js?v=17`
+- `loader.js?v=40` (loads `modals.html?v=39` — bump inside `loader.js` when `modals.html` changes)
 - `hr-accommodation-rooms.js?v=9`
 - `hr-accommodation-room-assignments.js?v=50`
 - Other files: see `public/index.html` script tags
@@ -761,18 +822,27 @@ npm start
 start-app.bat
 ```
 
+**Restarting locally (PowerShell):** kill whatever listens on port 3000 first, or you get `EADDRINUSE`:
+```powershell
+$c = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if ($c) { Stop-Process -Id $c[0].OwningProcess -Force }
+node server.js
+```
+New routes/migrations only take effect after a restart (a 404 on a new endpoint usually means the old server is still running).
+
+**Verification:** no test suite; use `node --check <file>` on edited JS files, then test in the browser / via authenticated HTTP requests. Remove any temporary test accounts/scripts afterwards.
+
 ### Database
 - SQLite file: `mwh_management.db`
 - Schema auto-created on server start via `config/database.js`
 - No migration system — tables use `CREATE TABLE IF NOT EXISTS`
 
 ### Production Deployment
-- **Server:** Ubuntu 20.04, behind Cloudflare tunnel
+- **Server:** Ubuntu 20.04 VPS (Namecheap, Chicago, IP `104.207.82.169`), behind Cloudflare
 - **Server path:** `/www/wwwroot/opsmaster.net/MWH_Management`
 - **Process manager:** PM2 (process name: `mwh-erp`)
 - **Deploy steps:**
-  1. Local: `git add -A; git commit -m "message"; git push`
-  2. Server: `cd /www/wwwroot/opsmaster.net/MWH_Management && git pull && pm2 restart all`
+  1. Local: commit and `git push origin main` (repo `ShijuPoroth/myerp`). Do **not** `git add -A` blindly — screenshots (`Screenshot *.png`), `.docx` files and temp `_*.js` scripts live in the project root and have been committed by accident before.
+  2. Server (one-liner from PowerShell): `ssh root@104.207.82.169 "cd /www/wwwroot/opsmaster.net/MWH_Management && git pull && pm2 restart mwh-erp"`
   3. Purge Cloudflare cache
   4. Test in private/incognito window (to avoid browser cache)
 - **Domain:** `https://opsmaster.net`

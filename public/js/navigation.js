@@ -56,6 +56,7 @@ function showSection(section) {
         if (hrEmpBtn) { hrEmpBtn.classList.remove('bg-gray-200', 'text-gray-700'); hrEmpBtn.classList.add('bg-blue-600', 'text-white'); }
         // Use the proper tab switching function instead of manual DOM manipulation
         showHRTab('employee-management');
+        loadUniformItems();
     } else if (section === 'catering') {
         showCateringSubTab('recipes');
         loadCateringData();
@@ -531,6 +532,7 @@ function showUniformTab(tab) {
     const activeUniformTab = document.getElementById(`uniform-${tab}-tab`);
     activeUniformTab.classList.remove('hidden');
     activeUniformTab.style.display = 'flex';
+    if (tab === 'items') loadUniformItems();
     if (tab === 'purchases') loadUniformPurchases();
     if (tab === 'distributions') loadUniformDistributions();
 }
