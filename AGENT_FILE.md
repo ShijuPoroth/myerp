@@ -773,7 +773,7 @@ Single-page application with all sections in one HTML file (~297KB). Sections ar
 - **Files:** `public/js/navigation.js`, `public/js/employees.js`, `public/js/uniforms.js`
 
 ### Uniform Distributions Excel Export (Enhancement)
-- New `GET /api/uniform-distributions/export-xlsx` endpoint in `routes/hr.js`, protected by `requireModulePermission('uniform-distributions', 'export')`.
+- New `GET /api/uniform-distributions/export-xlsx` endpoint in `routes/hr.js`, protected by `requireModulePermission('uniform-distributions', 'export')`. `HR_TABLE_TO_TAB` maps `'uniform-distributions'` → `{ tab: 'uniform-management', subtab: 'distributions' }` so the check reads the Distributions sub-tab `can_export` flag.
 - Workbook contains two sheets:
   - **By Staff** — one row per employee with consolidated item list, total quantity, location columns; grand total row.
   - **Item Details** — one row per distribution record (item, size, color, qty, date, notes).
