@@ -153,6 +153,7 @@ const HR_TABLE_TO_TAB = {
   'terminated-employees': { tab: 'employee-management', subtab: 'terminate-employee' },
   'employee-transfers': { tab: 'employee-management', subtab: 'transfer-employee' },
   'uniforms': { tab: 'uniform-management', subtab: '' },
+  'uniform-distributions': { tab: 'uniform-management', subtab: 'distributions' },
   'payments': { tab: 'payment-management', subtab: '' }
 };
 
@@ -397,6 +398,130 @@ router.delete('/uniform-purchases/:id', requireModulePermission('uniforms', 'del
 });
 
 // UNIFORM DISTRIBUTIONS
+router.get('/uniform-distributions/export-xlsx', requireModulePermission('uniform-distributions', 'export'), (req, res) => {
+  db.all(`SELECT ud.*, ui.name as item_name, ui.size as item_size, ui.color as item_color,
+          e.employee_id as employee_code, e.first_name || ' ' || e.last_name as employee_name,
+          e.department as emp_department, e.photo_path,
+          c.name as country_name, lt.name as location_type_name, slt.name as sub_location_name, bt.name as business_type_name, bta.business_unit_code
+          FROM uniform_distributions ud
+          JOIN uniform_items ui ON ud.item_id = ui.id
+          LEFT JOIN employees e ON ud.employee_id = e.id
+          LEFT JOIN business_type_assignments bta ON e.location_id = bta.id
+          LEFT JOIN countries c ON bta.country_id = c.id
+          LEFT JOIN location_types lt ON bta.location_id = lt.id
+          LEFT JOIN sub_location_types slt ON bta.sub_location_id = slt.id
+          LEFT JOIN business_types bt ON bta.business_type_id = bt.id
+          ORDER BY e.first_name, e.last_name, ud.distribution_date DESC`, [], async (err, rows) => {
+    if (err) { res.status(500).json({ error: err.message }); return; }
+    try {
+      const toDate = (s) => {
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || '');
+        return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : (s || '');
+      };
+      const subLoc = (r) => [r.sub_location_name, r.business_type_name, r.business_unit_code].filter(Boolean).join(' - ');
+
+      const groups = new Map();
+      rows.forEach(r => {
+        const key = r.employee_id ? `e${r.employee_id}` : `s${r.staff_name || 'unknown'}`;
+        if (!groups.has(key)) {
+          groups.set(key, {
+            code: r.employee_code || r.staff_id || '',
+            name: r.employee_name || r.staff_name || '',
+            department: r.emp_department || r.department || '',
+            country: r.country_name || '',
+            location: r.location_type_name || '',
+            subLocation: subLoc(r),
+            items: [],
+            total: 0,
+            lastDate: ''
+          });
+        }
+        const g = groups.get(key);
+        g.items.push(`${r.item_name}${r.item_size ? ' [' + r.item_size + ']' : ''} (${r.quantity})`);
+        g.total += Number(r.quantity) || 0;
+        if ((r.distribution_date || '') > g.lastDate) g.lastDate = r.distribution_date;
+      });
+
+      const workbook = new ExcelJS.Workbook();
+      const styleHeader = (ws, cols) => {
+        const header = ws.getRow(1);
+        header.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D4ED8' } };
+        header.alignment = { vertical: 'middle' };
+        ws.views = [{ state: 'frozen', ySplit: 1 }];
+        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols } };
+      };
+
+      const summary = workbook.addWorksheet('By Staff');
+      summary.columns = [
+        { header: '#', key: 'n', width: 6 },
+        { header: 'Employee ID', key: 'code', width: 14 },
+        { header: 'Staff Name', key: 'name', width: 28 },
+        { header: 'Department', key: 'department', width: 16 },
+        { header: 'Country', key: 'country', width: 14 },
+        { header: 'Location', key: 'location', width: 16 },
+        { header: 'Sub Location / Business', key: 'subLocation', width: 32 },
+        { header: 'Items Distributed', key: 'items', width: 60 },
+        { header: 'Total Qty', key: 'total', width: 10 },
+        { header: 'Last Distribution', key: 'lastDate', width: 16, style: { numFmt: 'dd/mm/yyyy' } }
+      ];
+      let n = 0;
+      groups.forEach(g => {
+        const row = summary.addRow({ ...g, n: ++n, items: g.items.join(', '), lastDate: toDate(g.lastDate) });
+        row.getCell('items').alignment = { wrapText: true, vertical: 'top' };
+      });
+      const grand = [...groups.values()].reduce((s, g) => s + g.total, 0);
+      const sTotal = summary.addRow({ name: `TOTAL (${groups.size} staff)`, total: grand });
+      sTotal.font = { bold: true };
+      styleHeader(summary, summary.columns.length);
+
+      const details = workbook.addWorksheet('Item Details');
+      details.columns = [
+        { header: '#', key: 'n', width: 6 },
+        { header: 'Employee ID', key: 'code', width: 14 },
+        { header: 'Staff Name', key: 'name', width: 28 },
+        { header: 'Department', key: 'department', width: 16 },
+        { header: 'Country', key: 'country', width: 14 },
+        { header: 'Location', key: 'location', width: 16 },
+        { header: 'Sub Location / Business', key: 'subLocation', width: 32 },
+        { header: 'Item', key: 'item', width: 26 },
+        { header: 'Size', key: 'size', width: 10 },
+        { header: 'Color', key: 'color', width: 12 },
+        { header: 'Qty', key: 'qty', width: 8 },
+        { header: 'Distribution Date', key: 'date', width: 16, style: { numFmt: 'dd/mm/yyyy' } },
+        { header: 'Notes', key: 'notes', width: 30 }
+      ];
+      rows.forEach((r, i) => details.addRow({
+        n: i + 1,
+        code: r.employee_code || r.staff_id || '',
+        name: r.employee_name || r.staff_name || '',
+        department: r.emp_department || r.department || '',
+        country: r.country_name || '',
+        location: r.location_type_name || '',
+        subLocation: subLoc(r),
+        item: r.item_name || '',
+        size: r.item_size || '',
+        color: r.item_color || '',
+        qty: Number(r.quantity) || 0,
+        date: toDate(r.distribution_date),
+        notes: r.notes || ''
+      }));
+      const dTotal = details.addRow({ name: 'TOTAL', qty: grand });
+      dTotal.font = { bold: true };
+      styleHeader(details, details.columns.length);
+
+      const stamp = new Date().toISOString().slice(0, 10);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="uniform_distributions_${stamp}.xlsx"`);
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (e) {
+      console.error('Uniform distributions export failed:', e);
+      if (!res.headersSent) res.status(500).json({ error: e.message });
+    }
+  });
+});
+
 router.get('/uniform-distributions', (req, res) => {
   db.all(`SELECT ud.*, ui.name as item_name, ui.size as item_size, ui.color as item_color,
           e.employee_id as employee_code, e.first_name || ' ' || e.last_name as employee_name,

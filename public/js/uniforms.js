@@ -713,6 +713,32 @@ function renderUniformDistributions(distributions) {
     }).join('');
 }
 
+async function exportUniformDistributionsExcel() {
+    if (typeof hasTablePermission === 'function' && !hasTablePermission('uniform-distributions', 'export')) {
+        alert('You do not have permission to export.');
+        return;
+    }
+    try {
+        const response = await fetch(`${API_BASE}/uniform-distributions/export-xlsx`);
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || 'Export failed');
+        }
+        const blob = await response.blob();
+        const stamp = new Date().toISOString().slice(0, 10);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `uniform_distributions_${stamp}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    } catch (error) {
+        console.error('Error exporting distributions:', error);
+        alert('Error exporting distributions: ' + error.message);
+    }
+}
+
 function openUniformDistributionModal() {
     const modal = document.getElementById('uniform-distribution-modal');
     document.getElementById('uniform-distribution-form').reset();

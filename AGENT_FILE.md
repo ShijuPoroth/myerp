@@ -1,7 +1,7 @@
 # MWH Management ERP — Agent Reference File
 
 > **Purpose:** Complete structural backup of the app. Use this to recover context without reading the entire codebase.
-> **Last Updated:** 2026-10-10
+> **Last Updated:** 2026-10-12
 
 ---
 
@@ -771,6 +771,17 @@ Single-page application with all sections in one HTML file (~297KB). Sections ar
 - **Regression (fixed 2026-10-10):** that change dropped `loadUniformItems()`, leaving Uniform Management → Items empty. Restored in `showSection('hr')` and `showUniformTab('items')` now loads its own data.
 - **Status:** Not yet confirmed fixed on production. If it recurs: capture browser console + check which `.employee-management-tab-content` / `.hr-tab-content` elements have `display` set; suspect `display:flex` applied to multiple panels or permission visibility hiding the sub-tab button row.
 - **Files:** `public/js/navigation.js`, `public/js/employees.js`, `public/js/uniforms.js`
+
+### Uniform Distributions Excel Export (Enhancement)
+- New `GET /api/uniform-distributions/export-xlsx` endpoint in `routes/hr.js`, protected by `requireModulePermission('uniform-distributions', 'export')`.
+- Workbook contains two sheets:
+  - **By Staff** — one row per employee with consolidated item list, total quantity, location columns; grand total row.
+  - **Item Details** — one row per distribution record (item, size, color, qty, date, notes).
+- Header row styled (blue background, white bold text), frozen first row, auto-filter, reasonable column widths, wrapped text for item lists, dates formatted as `dd/mm/yyyy`.
+- Frontend: green **Export Excel** button in Uniform Management → Distributions toolbar (`data-permission="uniform-distributions:export"`); `exportUniformDistributionsExcel()` in `public/js/uniforms.js` handles download and permission alert.
+- Export permission is enforced server-side and client-side.
+- **Files:** `routes/hr.js`, `public/js/uniforms.js`, `public/index.html`
+- **Date:** 2026-10-12
 
 ### HR Manager User Guide
 - `HR_Manager_User_Guide.docx` generated in project root (via Word COM from Markdown); intentionally **not** committed to git.
