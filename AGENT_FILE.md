@@ -788,7 +788,17 @@ Single-page application with all sections in one HTML file (~297KB). Sections ar
 
 ### Deferred
 - Server-side pagination for the Equipment list (user said "leave it").
-- Moving VPS closer to users (main remaining latency cause).
+- Moving hosting closer to users (main remaining latency cause — new host still ~700-780ms ping).
+
+### Production Migration — Old VPS → Shared cPanel Host (2026-10-28)
+- **Old:** Namecheap Ubuntu VPS `104.207.82.169` (Chicago), PM2 `mwh-erp`, served via Cloudflare Tunnel (`cloudflared`). **Expired/not renewed — gone.**
+- **New:** Shared cPanel "Cloud Silver" host (`chatrapati1.ultrahostnode.com`, IP `148.113.6.3`, user `opsmaste`, home `/home/opsmaste`). 4 vCPU / 4 GB LVE slice, LiteSpeed.
+- App runs via cPanel **Setup Node.js App** (CloudLinux Passenger) at `~/mwh-app`, Node **16.20.2** — NOT PM2. Restart via the app's **Restart** button in cPanel.
+- Deploy now: upload changed files via cPanel File Manager (or its Git Version Control tool), then Restart app. No SSH (port 22 closed — jailed); cPanel **Terminal** (Advanced → Terminal) is the shell; activate venv with `source ~/nodevenv/mwh-app/16/bin/activate`.
+- Node 16 required downgraded deps on the host: `bcrypt@5.1.1`, `helmet@7.2.0` (repo `package.json` still has `^6`/`^8` — reconcile if Node 18+ becomes available).
+- `.env` on host: real `SESSION_SECRET` set; SMTP creds unused (no email features in use).
+- DNS: `opsmaster.net` + `www` now plain **A records → 148.113.6.3** in Cloudflare, grey cloud (DNS only). Old Tunnel record deleted. SSL: Let's Encrypt via cPanel AutoSSL — valid padlock confirmed.
+- Migration method: `tar` of app folder (minus node_modules/.git) → 171 MB → uploaded via File Manager → extracted → `npm install --omit=dev` in nodevenv. Full DB + uploads carried over; verified login and API working before DNS cutover.
 
 ---
 
@@ -847,16 +857,16 @@ New routes/migrations only take effect after a restart (a 404 on a new endpoint 
 - Schema auto-created on server start via `config/database.js`
 - No migration system — tables use `CREATE TABLE IF NOT EXISTS`
 
-### Production Deployment
-- **Server:** Ubuntu 20.04 VPS (Namecheap, Chicago, IP `104.207.82.169`), behind Cloudflare
-- **Server path:** `/www/wwwroot/opsmaster.net/MWH_Management`
-- **Process manager:** PM2 (process name: `mwh-erp`)
+### Production Deployment (as of 2026-10-28 — see migration note above)
+- **Host:** Shared cPanel (Ultrahostnode `chatrapati1`, IP `148.113.6.3`), user `opsmaste`, LiteSpeed — NOT the old VPS anymore
+- **App path:** `/home/opsmaste/mwh-app` (deployed via cPanel **Setup Node.js App**, Node 16.20.2, Passenger)
+- **Restart:** cPanel → Setup Node.js App → **Restart** on `mwh-app` (no PM2)
 - **Deploy steps:**
   1. Local: commit and `git push origin main` (repo `ShijuPoroth/myerp`). Do **not** `git add -A` blindly — screenshots (`Screenshot *.png`), `.docx` files and temp `_*.js` scripts live in the project root and have been committed by accident before.
-  2. Server (one-liner from PowerShell): `ssh root@104.207.82.169 "cd /www/wwwroot/opsmaster.net/MWH_Management && git pull && pm2 restart mwh-erp"`
-  3. Purge Cloudflare cache
-  4. Test in private/incognito window (to avoid browser cache)
-- **Domain:** `https://opsmaster.net`
+  2. Upload changed files via cPanel **File Manager** (or configure cPanel Git Version Control), then **Restart** the app
+  3. Test in private/incognito window
+- **Shell:** cPanel → Advanced → **Terminal**; app venv: `source ~/nodevenv/mwh-app/16/bin/activate`
+- **Domain:** `https://opsmaster.net` (A record → 148.113.6.3 in Cloudflare, DNS-only; Let's Encrypt via AutoSSL)
 - **Mozilla Observatory:** A+ (100/100) as of 2026-09-12
 
 ---
